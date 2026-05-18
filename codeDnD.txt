@@ -1,0 +1,1442 @@
+components/character/EditModal.jsx
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Plus, Trash2, Save } from 'lucide-react';
+
+function Field({ label, value, onChange, type = 'text', placeholder }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{label}</Label>
+      <Input
+        type={type}
+        value={value ?? ''}
+        onChange={e => onChange(type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
+        placeholder={placeholder}
+        className="bg-muted border-border text-foreground font-inter"
+      />
+    </div>
+  );
+}
+
+function TextareaField({ label, value, onChange, placeholder, rows = 3 }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{label}</Label>
+      <Textarea
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        className="bg-muted border-border text-foreground font-inter resize-none"
+      />
+    </div>
+  );
+}
+
+function Toggle({ label, checked, onChange }) {
+  return (
+    <div className="flex items-center justify-between py-1.5">
+      <span className="text-sm font-inter text-foreground">{label}</span>
+      <Switch checked={!!checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+function SpellListEditor({ label, spells = [], onChange }) {
+  const [newSpell, setNewSpell] = useState('');
+
+  const add = () => {
+    if (!newSpell.trim()) return;
+    onChange([...spells, newSpell.trim()]);
+    setNewSpell('');
+  };
+
+  const remove = (i) => onChange(spells.filter((_, idx) => idx !== i));
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{label}</Label>
+      <div className="space-y-1">
+        {spells.map((s, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Input
+              value={s}
+              onChange={e => {
+                const arr = [...spells];
+                arr[i] = e.target.value;
+                onChange(arr);
+              }}
+              className="bg-muted border-border text-foreground font-inter text-sm"
+            />
+            <Button variant="ghost" size="icon" onClick={() => remove(i)} className="text-destructive hover:text-destructive flex-shrink-0">
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <Input
+          value={newSpell}
+          onChange={e => setNewSpell(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && add()}
+          placeholder={`Añadir ${label.toLowerCase()}...`}
+          className="bg-muted border-border text-foreground font-inter text-sm"
+        />
+        <Button variant="outline" size="icon" onClick={add} className="border-primary/40 text-primary flex-shrink-0">
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+const SKILLS_LIST = [
+  { key: 'acrobatics', label: 'Acrobacias' },
+  { key: 'animal_handling', label: 'T. con Animales' },
+  { key: 'arcana', label: 'Arcano' },
+  { key: 'athletics', label: 'Atletismo' },
+  { key: 'deception', label: 'Engaño' },
+  { key: 'history', label: 'Historia' },
+  { key: 'insight', label: 'Perspicacia' },
+  { key: 'intimidation', label: 'Intimidación' },
+  { key: 'investigation', label: 'Investigación' },
+  { key: 'sleight_of_hand', label: 'Juego de Manos' },
+  { key: 'medicine', label: 'Medicina' },
+  { key: 'nature', label: 'Naturaleza' },
+  { key: 'perception', label: 'Percepción' },
+  { key: 'persuasion', label: 'Persuasión' },
+  { key: 'religion', label: 'Religión' },
+  { key: 'stealth', label: 'Sigilo' },
+  { key: 'survival', label: 'Supervivencia' },
+];
+
+const SAVES_LIST = [
+  { key: 'strength', label: 'Fuerza' },
+  { key: 'dexterity', label: 'Destreza' },
+  { key: 'constitution', label: 'Constitución' },
+  { key: 'intelligence', label: 'Inteligencia' },
+  { key: 'wisdom', label: 'Sabiduría' },
+  { key: 'charisma', label: 'Carisma' },
+];
+
+export default function EditModal({ open, onClose, character, onSave, isSaving }) {
+  const [form, setForm] = useState({});
+
+  useEffect(() => {
+    if (character) setForm(JSON.parse(JSON.stringify(character)));
+  }, [character, open]);
+
+  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+  const setNested = (parent, key, val) =>
+    setForm(f => ({ ...f, [parent]: { ...(f[parent] || {}), [key]: val } }));
+
+  const handleSave = () => {
+    const cleaned = { ...form };
+    ['strength','dexterity','constitution','intelligence','wisdom','charisma',
+     'proficiency_bonus','armor_class','initiative','speed','hp_max','hp_current',
+     'hp_temp','passive_perception','spell_save_dc','spell_attack_bonus',
+     'gold','silver','copper','electrum','platinum'].forEach(k => {
+      if (cleaned[k] === '') cleaned[k] = null;
+    });
+    onSave(cleaned);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border text-foreground">
+        <DialogHeader>
+          <DialogTitle className="font-cinzel text-xl text-primary">Editar Personaje</DialogTitle>
+        </DialogHeader>
+
+        <Tabs defaultValue="info" className="w-full mt-2">
+          <TabsList className="w-full bg-muted border border-border flex-wrap h-auto gap-1 p-1">
+            {['info','stats','combat','skills','spells','traits','monedas'].map(t => (
+              <TabsTrigger key={t} value={t}
+                className="text-xs capitalize data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                {t === 'info' ? 'Info' : t === 'stats' ? 'Atributos' : t === 'combat' ? 'Combate'
+                  : t === 'skills' ? 'Habilidades' : t === 'spells' ? 'Conjuros'
+                  : t === 'traits' ? 'Rasgos' : 'Monedas'}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="info" className="space-y-3 mt-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Nombre" value={form.name} onChange={v => set('name', v)} />
+              <Field label="Clase y Nivel" value={form.class_level} onChange={v => set('class_level', v)} placeholder="Brujo 1" />
+              <Field label="Raza" value={form.race} onChange={v => set('race', v)} />
+              <Field label="Trasfondo" value={form.background} onChange={v => set('background', v)} />
+              <Field label="Alineamiento" value={form.alignment} onChange={v => set('alignment', v)} />
+              <Field label="Puntos de Experiencia" value={form.experience} onChange={v => set('experience', v)} />
+              <Field label="Nombre del Jugador" value={form.player_name} onChange={v => set('player_name', v)} />
+            </div>
+            <div className="flex items-center justify-between py-2 border-t border-border mt-2">
+              <span className="text-sm font-inter text-foreground">Inspiración</span>
+              <Switch checked={!!form.inspiration} onCheckedChange={v => set('inspiration', v)} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="stats" className="space-y-3 mt-4">
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { key: 'strength', label: 'Fuerza' },
+                { key: 'dexterity', label: 'Destreza' },
+                { key: 'constitution', label: 'Constitución' },
+                { key: 'intelligence', label: 'Inteligencia' },
+                { key: 'wisdom', label: 'Sabiduría' },
+                { key: 'charisma', label: 'Carisma' },
+              ].map(a => (
+                <Field key={a.key} label={a.label} value={form[a.key]} type="number"
+                  onChange={v => set(a.key, v)} />
+              ))}
+            </div>
+            <Field label="Bonificador de Competencia" value={form.proficiency_bonus} type="number"
+              onChange={v => set('proficiency_bonus', v)} />
+            <div className="border-t border-border pt-3">
+              <p className="text-xs font-inter text-muted-foreground uppercase tracking-wider mb-2">Tiradas de Salvación (Competencia)</p>
+              {SAVES_LIST.map(s => (
+                <Toggle key={s.key} label={s.label}
+                  checked={(form.saving_throws || {})[s.key]}
+                  onChange={v => setNested('saving_throws', s.key, v)} />
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="combat" className="space-y-3 mt-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Clase de Armadura" value={form.armor_class} type="number" onChange={v => set('armor_class', v)} />
+              <Field label="Iniciativa" value={form.initiative} type="number" onChange={v => set('initiative', v)} />
+              <Field label="Velocidad (ft)" value={form.speed} type="number" onChange={v => set('speed', v)} />
+              <Field label="PG Máximos" value={form.hp_max} type="number" onChange={v => set('hp_max', v)} />
+              <Field label="PG Actuales" value={form.hp_current} type="number" onChange={v => set('hp_current', v)} />
+              <Field label="PG Temporales" value={form.hp_temp} type="number" onChange={v => set('hp_temp', v)} />
+              <Field label="Dados de Golpe" value={form.hit_dice} onChange={v => set('hit_dice', v)} placeholder="1d8" />
+              <Field label="Percepción Pasiva" value={form.passive_perception} type="number" onChange={v => set('passive_perception', v)} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="skills" className="space-y-1 mt-4">
+            <p className="text-xs font-inter text-muted-foreground uppercase tracking-wider mb-2">Competencias en Habilidades</p>
+            {SKILLS_LIST.map(s => (
+              <Toggle key={s.key} label={s.label}
+                checked={(form.skills || {})[s.key]}
+                onChange={v => setNested('skills', s.key, v)} />
+            ))}
+            <div className="pt-3 border-t border-border">
+              <TextareaField label="Otras Competencias e Idiomas" value={form.other_proficiencies}
+                onChange={v => set('other_proficiencies', v)} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="spells" className="space-y-4 mt-4">
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Clase Lanzadora" value={form.spellcasting_class} onChange={v => set('spellcasting_class', v)} />
+              <Field label="Aptitud Mágica" value={form.spellcasting_ability} onChange={v => set('spellcasting_ability', v)} placeholder="CAR" />
+              <Field label="CD Salvación" value={form.spell_save_dc} type="number" onChange={v => set('spell_save_dc', v)} />
+              <Field label="Bonif. Ataque" value={form.spell_attack_bonus} type="number" onChange={v => set('spell_attack_bonus', v)} />
+            </div>
+            <div className="border-t border-border pt-3 space-y-1">
+              <p className="text-xs font-inter text-muted-foreground uppercase tracking-wider mb-2">Espacios de Conjuro</p>
+              <div className="grid grid-cols-2 gap-3">
+                {[1,2,3].map(lvl => (
+                  <React.Fragment key={lvl}>
+                    <Field label={`Nivel ${lvl} - Total`}
+                      value={(form.spell_slots || {})[`level_${lvl}_total`]}
+                      type="number"
+                      onChange={v => setNested('spell_slots', `level_${lvl}_total`, v)} />
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-border pt-3 space-y-4">
+              <SpellListEditor label="Trucos" spells={form.cantrips || []} onChange={v => set('cantrips', v)} />
+              <SpellListEditor label="Conjuros Nivel 1" spells={form.spells_level_1 || []} onChange={v => set('spells_level_1', v)} />
+              <SpellListEditor label="Conjuros Nivel 2" spells={form.spells_level_2 || []} onChange={v => set('spells_level_2', v)} />
+              <SpellListEditor label="Conjuros Nivel 3" spells={form.spells_level_3 || []} onChange={v => set('spells_level_3', v)} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="traits" className="space-y-3 mt-4">
+            <TextareaField label="Rasgos y Atributos" value={form.traits} onChange={v => set('traits', v)} rows={5} />
+            <TextareaField label="Rasgos de Personalidad" value={form.personality_traits} onChange={v => set('personality_traits', v)} />
+            <TextareaField label="Ideales" value={form.ideals} onChange={v => set('ideals', v)} />
+            <TextareaField label="Vínculos" value={form.bonds} onChange={v => set('bonds', v)} />
+            <TextareaField label="Defectos" value={form.flaws} onChange={v => set('flaws', v)} />
+            <TextareaField label="Equipo" value={form.equipment} onChange={v => set('equipment', v)} rows={4} />
+          </TabsContent>
+
+          <TabsContent value="monedas" className="space-y-3 mt-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Platino (PPL)" value={form.platinum} type="number" onChange={v => set('platinum', v)} />
+              <Field label="Oro (PO)" value={form.gold} type="number" onChange={v => set('gold', v)} />
+              <Field label="Electro (PE)" value={form.electrum} type="number" onChange={v => set('electrum', v)} />
+              <Field label="Plata (PP)" value={form.silver} type="number" onChange={v => set('silver', v)} />
+              <Field label="Cobre (PC)" value={form.copper} type="number" onChange={v => set('copper', v)} />
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">
+          <Button variant="outline" onClick={onClose} className="font-inter border-border">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 font-inter gap-2"
+          >
+            <Save className="w-4 h-4" />
+            {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+components/character/MagicParticles.jsx
+import React, { useEffect, useRef } from 'react';
+
+export default function MagicParticles() {
+  const canvasRef = useRef(null);
+  const animFrameRef = useRef(null);
+  const particlesRef = useRef([]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const COLORS = [
+      'rgba(212, 175, 55,',   // gold
+      'rgba(160, 100, 240,',  // purple
+      'rgba(100, 180, 255,',  // blue
+      'rgba(255, 200, 100,',  // warm gold
+      'rgba(200, 150, 255,',  // lavender
+      'rgba(255, 255, 220,',  // white-gold
+    ];
+
+    function createOrb() {
+      return {
+        type: 'orb',
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 4 + 2,
+        speedX: (Math.random() - 0.5) * 0.35,
+        speedY: -(Math.random() * 0.45 + 0.08),
+        opacity: Math.random() * 0.7 + 0.2,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        twinkle: Math.random() * Math.PI * 2,
+        twinkleSpeed: Math.random() * 0.04 + 0.01,
+        drift: (Math.random() - 0.5) * 0.3,
+      };
+    }
+
+    function createSpark() {
+      return {
+        type: 'spark',
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 1.8 + 0.5,
+        speedX: (Math.random() - 0.5) * 0.5,
+        speedY: -(Math.random() * 0.6 + 0.1),
+        opacity: Math.random() * 0.8 + 0.2,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        twinkle: Math.random() * Math.PI * 2,
+        twinkleSpeed: Math.random() * 0.07 + 0.02,
+        drift: (Math.random() - 0.5) * 0.4,
+      };
+    }
+
+    function createDust() {
+      return {
+        type: 'dust',
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 1.2 + 0.3,
+        speedX: (Math.random() - 0.5) * 0.15,
+        speedY: -(Math.random() * 0.2 + 0.03),
+        opacity: Math.random() * 0.4 + 0.05,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        twinkle: Math.random() * Math.PI * 2,
+        twinkleSpeed: Math.random() * 0.02 + 0.005,
+        drift: (Math.random() - 0.5) * 0.6,
+        wobble: Math.random() * Math.PI * 2,
+        wobbleSpeed: Math.random() * 0.03 + 0.005,
+      };
+    }
+
+    function createParticle() {
+      const r = Math.random();
+      if (r < 0.45) return createOrb();
+      if (r < 0.7) return createSpark();
+      return createDust();
+    }
+
+    const COUNT = 130;
+    for (let i = 0; i < COUNT; i++) {
+      const p = createParticle();
+      p.y = Math.random() * canvas.height;
+      particlesRef.current.push(p);
+    }
+
+    function drawBloomOrb(p, opacity) {
+      // Outer large bloom halo (very soft)
+      const bloom1 = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 18);
+      bloom1.addColorStop(0, `${p.color} ${opacity * 0.18})`);
+      bloom1.addColorStop(1, `${p.color} 0)`);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 18, 0, Math.PI * 2);
+      ctx.fillStyle = bloom1;
+      ctx.fill();
+
+      // Mid bloom
+      const bloom2 = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 7);
+      bloom2.addColorStop(0, `${p.color} ${opacity * 0.5})`);
+      bloom2.addColorStop(1, `${p.color} 0)`);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 7, 0, Math.PI * 2);
+      ctx.fillStyle = bloom2;
+      ctx.fill();
+
+      // Core bright center
+      const core = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 1.2);
+      core.addColorStop(0, `${p.color} ${Math.min(1, opacity * 2.5)})`);
+      core.addColorStop(0.5, `${p.color} ${Math.min(1, opacity * 1.5)})`);
+      core.addColorStop(1, `${p.color} 0)`);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 1.2, 0, Math.PI * 2);
+      ctx.fillStyle = core;
+      ctx.fill();
+    }
+
+    function drawSpark(p, opacity) {
+      ctx.save();
+      ctx.globalAlpha = opacity * 0.3;
+      // glow behind spark
+      const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 8);
+      grd.addColorStop(0, `${p.color} 1)`);
+      grd.addColorStop(1, `${p.color} 0)`);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 8, 0, Math.PI * 2);
+      ctx.fillStyle = grd;
+      ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.twinkle);
+      ctx.fillStyle = `${p.color} 1)`;
+      const s = p.size;
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 4);
+      ctx.lineTo(s * 0.35, -s * 0.35);
+      ctx.lineTo(s * 4, 0);
+      ctx.lineTo(s * 0.35, s * 0.35);
+      ctx.lineTo(0, s * 4);
+      ctx.lineTo(-s * 0.35, s * 0.35);
+      ctx.lineTo(-s * 4, 0);
+      ctx.lineTo(-s * 0.35, -s * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawDust(p, opacity) {
+      // tiny glowing dust mote
+      const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 5);
+      grd.addColorStop(0, `${p.color} ${opacity * 0.9})`);
+      grd.addColorStop(0.4, `${p.color} ${opacity * 0.3})`);
+      grd.addColorStop(1, `${p.color} 0)`);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 5, 0, Math.PI * 2);
+      ctx.fillStyle = grd;
+      ctx.fill();
+    }
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particlesRef.current.forEach((p, i) => {
+        p.twinkle += p.twinkleSpeed;
+        if (p.wobble !== undefined) p.wobble += p.wobbleSpeed;
+        const twinkleFactor = (Math.sin(p.twinkle) + 1) / 2;
+        const opacity = p.opacity * (0.3 + twinkleFactor * 0.7);
+
+        if (p.type === 'orb') {
+          drawBloomOrb(p, opacity);
+          p.x += p.speedX + Math.sin(p.twinkle * 0.3) * p.drift;
+          p.y += p.speedY;
+        } else if (p.type === 'spark') {
+          drawSpark(p, opacity);
+          p.x += p.speedX + Math.sin(p.twinkle * 0.3) * p.drift;
+          p.y += p.speedY;
+        } else {
+          drawDust(p, opacity);
+          p.x += p.speedX + Math.sin(p.wobble) * p.drift;
+          p.y += p.speedY;
+        }
+
+        if (p.y < -30 || p.x < -30 || p.x > canvas.width + 30) {
+          const newP = createParticle();
+          newP.y = canvas.height + 15;
+          particlesRef.current[i] = newP;
+        }
+      });
+
+      animFrameRef.current = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref__={canvasRef}
+      className="fixed inset-0 pointer-events-none z-0"
+      style={{ opacity: 0.65 }}
+    />
+  );
+}
+
+main.jsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from '@/App.jsx'
+import '@/index.css'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <App />
+)
+App.jsx
+import { Toaster } from "@/components/ui/toaster"
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClientInstance } from '@/lib/query-client'
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import PageNotFound from './lib/PageNotFound';
+import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import CharacterSheet from './pages/CharacterSheet';
+
+const AuthenticatedApp = () => {
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+
+  if (isLoadingPublicSettings || isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (authError) {
+    if (authError.type === 'user_not_registered') {
+      return <UserNotRegisteredError />;
+    } else if (authError.type === 'auth_required') {
+      navigateToLogin();
+      return null;
+    }
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<CharacterSheet />} />
+      <Route path="*" element={<PageNotFound />} />
+    </Routes>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <QueryClientProvider client={queryClientInstance}>
+        <Router>
+          <AuthenticatedApp />
+        </Router>
+        <Toaster />
+      </QueryClientProvider>
+    </AuthProvider>
+  )
+}
+
+export default App
+index.css
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-cinzel: 'Cinzel', serif;
+    --font-inter: 'Inter', sans-serif;
+
+    --background: 240 10% 6%;
+    --foreground: 45 20% 90%;
+    --card: 240 8% 10%;
+    --card-foreground: 45 20% 90%;
+    --popover: 240 8% 12%;
+    --popover-foreground: 45 20% 90%;
+    --primary: 45 70% 55%;
+    --primary-foreground: 240 10% 6%;
+    --secondary: 270 30% 20%;
+    --secondary-foreground: 45 20% 90%;
+    --muted: 240 8% 14%;
+    --muted-foreground: 240 5% 55%;
+    --accent: 270 40% 30%;
+    --accent-foreground: 45 20% 95%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 8% 18%;
+    --input: 240 8% 16%;
+    --ring: 45 70% 55%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* (mismos valores) */
+  }
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
+}
+tailwind.config.js
+module.exports = {
+  darkMode: ["class"],
+  content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
+  theme: {
+    extend: {
+      fontFamily: {
+        cinzel: ['var(--font-cinzel)'],
+        inter: ['var(--font-inter)']
+      },
+      borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+      colors: {
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
+        primary: { DEFAULT: 'hsl(var(--primary))', foreground: 'hsl(var(--primary-foreground))' },
+        secondary: { DEFAULT: 'hsl(var(--secondary))', foreground: 'hsl(var(--secondary-foreground))' },
+        muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
+        accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(var(--accent-foreground))' },
+        destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--destructive-foreground))' },
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        chart: { '1': 'hsl(var(--chart-1))', '2': 'hsl(var(--chart-2))', '3': 'hsl(var(--chart-3))', '4': 'hsl(var(--chart-4))', '5': 'hsl(var(--chart-5))' },
+      },
+    }
+  },
+  plugins: [require("tailwindcss-animate")],
+}
+entities/Character.json
+{
+  "name": "Character",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "class_level": { "type": "string" },
+    "race": { "type": "string" },
+    "background": { "type": "string" },
+    "alignment": { "type": "string" },
+    "experience": { "type": "string" },
+    "player_name": { "type": "string" },
+    "strength": { "type": "number" },
+    "dexterity": { "type": "number" },
+    "constitution": { "type": "number" },
+    "intelligence": { "type": "number" },
+    "wisdom": { "type": "number" },
+    "charisma": { "type": "number" },
+    "proficiency_bonus": { "type": "number" },
+    "armor_class": { "type": "number" },
+    "initiative": { "type": "number" },
+    "speed": { "type": "number" },
+    "hp_max": { "type": "number" },
+    "hp_current": { "type": "number" },
+    "hp_temp": { "type": "number" },
+    "hit_dice": { "type": "string" },
+    "passive_perception": { "type": "number" },
+    "gold": { "type": "number" },
+    "silver": { "type": "number" },
+    "copper": { "type": "number" },
+    "electrum": { "type": "number" },
+    "platinum": { "type": "number" },
+    "inventory": { "type": "array", "items": { "type": "string" } },
+    "saving_throws": {
+      "type": "object",
+      "properties": {
+        "strength": { "type": "boolean" },
+        "dexterity": { "type": "boolean" },
+        "constitution": { "type": "boolean" },
+        "intelligence": { "type": "boolean" },
+        "wisdom": { "type": "boolean" },
+        "charisma": { "type": "boolean" }
+      }
+    },
+    "skills": {
+      "type": "object",
+      "properties": {
+        "acrobatics": { "type": "boolean" },
+        "athletics": { "type": "boolean" },
+        "arcana": { "type": "boolean" },
+        "deception": { "type": "boolean" },
+        "history": { "type": "boolean" },
+        "insight": { "type": "boolean" },
+        "intimidation": { "type": "boolean" },
+        "investigation": { "type": "boolean" },
+        "sleight_of_hand": { "type": "boolean" },
+        "medicine": { "type": "boolean" },
+        "nature": { "type": "boolean" },
+        "perception": { "type": "boolean" },
+        "persuasion": { "type": "boolean" },
+        "religion": { "type": "boolean" },
+        "stealth": { "type": "boolean" },
+        "survival": { "type": "boolean" },
+        "animal_handling": { "type": "boolean" }
+      }
+    },
+    "other_proficiencies": { "type": "string" },
+    "equipment": { "type": "string" },
+    "attacks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "bonus": { "type": "string" },
+          "damage_type": { "type": "string" }
+        }
+      }
+    },
+    "traits": { "type": "string" },
+    "personality_traits": { "type": "string" },
+    "ideals": { "type": "string" },
+    "bonds": { "type": "string" },
+    "flaws": { "type": "string" },
+    "spellcasting_class": { "type": "string" },
+    "spellcasting_ability": { "type": "string" },
+    "spell_save_dc": { "type": "number" },
+    "spell_attack_bonus": { "type": "number" },
+    "cantrips": { "type": "array", "items": { "type": "string" } },
+    "spells_level_1": { "type": "array", "items": { "type": "string" } },
+    "spells_level_2": { "type": "array", "items": { "type": "string" } },
+    "spells_level_3": { "type": "array", "items": { "type": "string" } },
+    "spell_slots": {
+      "type": "object",
+      "properties": {
+        "level_1_total": { "type": "number" },
+        "level_1_used": { "type": "number" },
+        "level_2_total": { "type": "number" },
+        "level_2_used": { "type": "number" },
+        "level_3_total": { "type": "number" },
+        "level_3_used": { "type": "number" }
+      }
+    },
+    "death_saves": {
+      "type": "object",
+      "properties": {
+        "successes": { "type": "number" },
+        "failures": { "type": "number" }
+      }
+    },
+    "inspiration": { "type": "boolean" }
+  },
+  "required": ["name"]
+}
+pages/CharacterSheet.jsx
+import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Sword, BookOpen, ScrollText, User, Pencil } from 'lucide-react';
+
+import CharacterHeader from '../components/character/CharacterHeader';
+import AbilityScore from '../components/character/AbilityScore';
+import SkillsList from '../components/character/SkillsList';
+import CombatStats from '../components/character/CombatStats';
+import TraitsPanel from '../components/character/TraitsPanel';
+import SpellsPanel from '../components/character/SpellsPanel';
+import CurrencyPanel from '../components/character/CurrencyPanel';
+import InventoryPanel from '../components/character/InventoryPanel';
+import EditModal from '../components/character/EditModal';
+import MagicParticles from '../components/character/MagicParticles';
+import CharacterMenu from '../components/character/CharacterMenu';
+
+export default function CharacterSheet() {
+  const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const [activeId, setActiveId] = useState(null);
+
+  const { data: characters, isLoading } = useQuery({
+    queryKey: ['characters'],
+    queryFn: () => base44.entities.Character.list('-updated_date', 50),
+    initialData: [],
+  });
+
+  const character = (activeId
+    ? characters.find(c => c.id === activeId)
+    : characters[0]) || {};
+
+  const updateMutation = useMutation({
+    mutationFn: (data) => base44.entities.Character.update(character.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['characters'] });
+      queryClient.invalidateQueries({ queryKey: ['characters-list'] });
+      setEditOpen(false);
+    },
+  });
+
+  const handleUpdateHP = (newHP) => updateMutation.mutate({ hp_current: newHP });
+
+  const handleToggleSlot = (level, index) => {
+    const slots = { ...(character.spell_slots || {}) };
+    const usedKey = `level_${level}_used`;
+    const currentUsed = slots[usedKey] || 0;
+    slots[usedKey] = index < currentUsed ? index : index + 1;
+    updateMutation.mutate({ spell_slots: slots });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-muted border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const abilities = [
+    { key: 'strength', label: 'FUE' },
+    { key: 'dexterity', label: 'DES' },
+    { key: 'constitution', label: 'CON' },
+    { key: 'intelligence', label: 'INT' },
+    { key: 'wisdom', label: 'SAB' },
+    { key: 'charisma', label: 'CAR' },
+  ];
+
+  const saves = character.saving_throws || {};
+
+  if (!character.id) {
+    return (
+      <div className="min-h-screen bg-background relative">
+        <MagicParticles />
+        <div className="absolute top-4 left-4 z-20">
+          <CharacterMenu activeCharacterId={null} onSelect={setActiveId} />
+        </div>
+        <div className="relative z-10 flex items-center justify-center min-h-screen p-6">
+          <div className="text-center space-y-4">
+            <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+              <Sword className="w-10 h-10 text-primary" />
+            </div>
+            <h2 className="text-xl font-cinzel font-bold text-foreground">No hay personaje</h2>
+            <p className="text-sm font-inter text-muted-foreground">
+              Abre el menú (☰) para crear tu primer personaje.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background relative">
+      <MagicParticles />
+
+      <div className="fixed top-4 left-4 z-20">
+        <CharacterMenu
+          activeCharacterId={character.id}
+          onSelect={(id) => { setActiveId(id); }}
+        />
+      </div>
+
+      <div className="relative z-10 max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pt-16">
+        <div className="relative">
+          <CharacterHeader character={character} />
+          <Button
+            onClick={() => setEditOpen(true)}
+            size="sm"
+            className="absolute top-3 right-3 gap-1.5 bg-primary/20 hover:bg-primary/30
+              text-primary border border-primary/30 font-inter"
+            variant="ghost"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline text-xs">Editar</span>
+          </Button>
+        </div>
+
+        <div className="flex justify-center gap-3 flex-wrap">
+          {abilities.map((a) => (
+            <AbilityScore
+              key={a.key}
+              label={a.label}
+              score={character[a.key] || 10}
+              isProficientSave={saves[a.key] || false}
+              profBonus={character.proficiency_bonus || 2}
+            />
+          ))}
+        </div>
+
+        <CurrencyPanel
+          character={character}
+          onUpdate={(data) => updateMutation.mutate(data)}
+        />
+
+        <InventoryPanel
+          items={character.inventory || []}
+          onChange={(inventory) => updateMutation.mutate({ inventory })}
+        />
+
+        <Tabs defaultValue="combat" className="w-full">
+          <TabsList className="w-full bg-card border border-border">
+            <TabsTrigger value="combat" className="flex-1 gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <Sword className="w-4 h-4" /><span className="hidden sm:inline">Combate</span>
+            </TabsTrigger>
+            <TabsTrigger value="skills" className="flex-1 gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <User className="w-4 h-4" /><span className="hidden sm:inline">Habilidades</span>
+            </TabsTrigger>
+            <TabsTrigger value="spells" className="flex-1 gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <BookOpen className="w-4 h-4" /><span className="hidden sm:inline">Conjuros</span>
+            </TabsTrigger>
+            <TabsTrigger value="traits" className="flex-1 gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <ScrollText className="w-4 h-4" /><span className="hidden sm:inline">Rasgos</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="combat" className="mt-4">
+            <CombatStats character={character} onUpdateHP={handleUpdateHP} />
+          </TabsContent>
+          <TabsContent value="skills" className="mt-4">
+            <div className="bg-card rounded-xl border border-border p-4">
+              <h3 className="text-xs font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-3">Habilidades</h3>
+              <SkillsList character={character} />
+            </div>
+          </TabsContent>
+          <TabsContent value="spells" className="mt-4">
+            <SpellsPanel character={character} onToggleSlot={handleToggleSlot} />
+          </TabsContent>
+          <TabsContent value="traits" className="mt-4">
+            <TraitsPanel character={character} />
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <EditModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        character={character}
+        onSave={(data) => updateMutation.mutate(data)}
+        isSaving={updateMutation.isPending}
+      />
+    </div>
+  );
+}
+components/character/CharacterMenu.jsx
+import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Menu, Plus, Trash2, User, Check } from 'lucide-react';
+
+export default function CharacterMenu({ activeCharacterId, onSelect }) {
+  const queryClient = useQueryClient();
+  const [newName, setNewName] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const { data: characters = [] } = useQuery({
+    queryKey: ['characters-list'],
+    queryFn: () => base44.entities.Character.list('-created_date', 50),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (name) => base44.entities.Character.create({ name }),
+    onSuccess: (newChar) => {
+      queryClient.invalidateQueries({ queryKey: ['characters-list'] });
+      queryClient.invalidateQueries({ queryKey: ['characters'] });
+      onSelect(newChar.id);
+      setNewName('');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => base44.entities.Character.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['characters-list'] });
+      queryClient.invalidateQueries({ queryKey: ['characters'] });
+    },
+  });
+
+  const handleCreate = () => {
+    if (!newName.trim()) return;
+    createMutation.mutate(newName.trim());
+  };
+
+  const handleSelect = (id) => { onSelect(id); setOpen(false); };
+
+  const handleDelete = (e, id) => {
+    e.stopPropagation();
+    if (confirm('¿Eliminar este personaje?')) {
+      deleteMutation.mutate(id);
+      if (id === activeCharacterId) {
+        const remaining = characters.filter(c => c.id !== id);
+        onSelect(remaining.length > 0 ? remaining[0].id : null);
+      }
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="bg-card/80 border border-border text-foreground hover:bg-muted">
+          <Menu className="w-5 h-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="bg-card border-border text-foreground w-72">
+        <SheetHeader>
+          <SheetTitle className="font-cinzel text-primary text-lg">Personajes</SheetTitle>
+        </SheetHeader>
+        <div className="mt-6 space-y-2">
+          {characters.map(c => (
+            <div key={c.id} onClick={() => handleSelect(c.id)}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group
+                ${c.id === activeCharacterId ? 'bg-primary/20 border border-primary/40' : 'hover:bg-muted border border-transparent'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${c.id === activeCharacterId ? 'bg-primary/30' : 'bg-muted'}`}>
+                {c.id === activeCharacterId ? <Check className="w-4 h-4 text-primary" /> : <User className="w-4 h-4 text-muted-foreground" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-cinzel text-sm text-foreground truncate">{c.name}</p>
+                {c.class_level && <p className="text-xs text-muted-foreground font-inter truncate">{c.class_level}</p>}
+              </div>
+              <button onClick={(e) => handleDelete(e, c.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+          {characters.length === 0 && <p className="text-sm text-muted-foreground font-inter italic text-center py-4">Sin personajes</p>}
+        </div>
+        <div className="mt-6 border-t border-border pt-4 space-y-2">
+          <p className="text-xs font-inter text-muted-foreground uppercase tracking-wider">Nuevo personaje</p>
+          <div className="flex gap-2">
+            <Input value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreate()}
+              placeholder="Nombre..." className="bg-muted border-border text-foreground font-inter text-sm" />
+            <Button onClick={handleCreate} disabled={createMutation.isPending || !newName.trim()} size="icon"
+              className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40 flex-shrink-0" variant="ghost">
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+components/character/CharacterHeader.jsx
+import React from 'react';
+import { Sparkles, Star } from 'lucide-react';
+
+export default function CharacterHeader({ character }) {
+  return (
+    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-secondary via-card to-secondary border border-border p-6">
+      <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute bottom-0 left-0 w-24 h-24 bg-accent/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+      <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="w-16 h-16 rounded-lg bg-primary/10 border-2 border-primary/30 flex items-center justify-center flex-shrink-0">
+          <Sparkles className="w-8 h-8 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-cinzel font-bold text-foreground tracking-wide">
+            {character.name || 'Sin Nombre'}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+            <span className="text-sm font-inter text-primary font-medium">{character.class_level || 'Clase ?'}</span>
+            {character.race && <><span className="text-muted-foreground">·</span><span className="text-sm font-inter text-muted-foreground">{character.race}</span></>}
+            {character.background && <><span className="text-muted-foreground">·</span><span className="text-sm font-inter text-muted-foreground">{character.background}</span></>}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+            {character.alignment && <span className="text-xs font-inter text-muted-foreground">{character.alignment}</span>}
+            {character.experience && <span className="text-xs font-inter text-muted-foreground">XP: {character.experience}</span>}
+            {character.player_name && <span className="text-xs font-inter text-muted-foreground">Jugador: {character.player_name}</span>}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="text-center">
+            <div className="w-12 h-12 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-center">
+              <span className="text-lg font-cinzel font-bold text-primary">+{character.proficiency_bonus || 2}</span>
+            </div>
+            <span className="text-[9px] font-inter text-muted-foreground uppercase tracking-wider mt-1 block">Compet.</span>
+          </div>
+          {character.inspiration && (
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center">
+                <Star className="w-5 h-5 text-primary fill-primary" />
+              </div>
+              <span className="text-[9px] font-inter text-muted-foreground uppercase tracking-wider mt-1 block">Inspir.</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+components/character/AbilityScore.jsx
+import React from 'react';
+
+function getModifier(score) { return Math.floor((score - 10) / 2); }
+function formatMod(mod) { return mod >= 0 ? `+${mod}` : `${mod}`; }
+
+export default function AbilityScore({ label, score, isProficientSave, profBonus }) {
+  const mod = getModifier(score);
+  const saveMod = isProficientSave ? mod + profBonus : mod;
+
+  return (
+    <div className="flex flex-col items-center group">
+      <div className="relative w-20 h-24 flex flex-col items-center justify-center">
+        <div className="absolute inset-0 bg-card border-2 border-border rounded-lg group-hover:border-primary/50 transition-colors" />
+        <span className="relative z-10 text-2xl font-cinzel font-bold text-primary">{formatMod(mod)}</span>
+        <span className="relative z-10 text-xs text-muted-foreground font-inter mt-0.5">{score}</span>
+      </div>
+      <span className="mt-1.5 text-[10px] font-inter font-semibold tracking-widest uppercase text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-1 mt-0.5">
+        <div className={`w-1.5 h-1.5 rounded-full ${isProficientSave ? 'bg-primary' : 'bg-muted'}`} />
+        <span className="text-[10px] text-muted-foreground font-inter">Salv {formatMod(saveMod)}</span>
+      </div>
+    </div>
+  );
+}
+components/character/CombatStats.jsx
+import React from 'react';
+import { Shield, Zap, Footprints, Heart } from 'lucide-react';
+
+export default function CombatStats({ character, onUpdateHP }) {
+  const stats = [
+    { label: 'Clase de Armadura', value: character.armor_class || 10, icon: Shield, color: 'text-primary' },
+    { label: 'Iniciativa', value: `+${character.initiative || 0}`, icon: Zap, color: 'text-chart-2' },
+    { label: 'Velocidad', value: `${character.speed || 30} ft`, icon: Footprints, color: 'text-chart-3' },
+  ];
+
+  const hpMax = character.hp_max || 0;
+  const hpCurrent = character.hp_current ?? hpMax;
+  const hpPercent = hpMax > 0 ? (hpCurrent / hpMax) * 100 : 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        {stats.map((stat) => (
+          <div key={stat.label} className="bg-muted/50 rounded-lg p-3 text-center border border-border">
+            <stat.icon className={`w-4 h-4 mx-auto mb-1 ${stat.color}`} />
+            <div className="text-xl font-cinzel font-bold text-foreground">{stat.value}</div>
+            <div className="text-[10px] font-inter text-muted-foreground uppercase tracking-wider mt-0.5">{stat.label}</div>
+          </div>
+        ))}
+      </div>
+      <div className="bg-muted/50 rounded-lg p-4 border border-border">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Heart className="w-4 h-4 text-destructive" />
+            <span className="text-xs font-inter font-semibold uppercase tracking-wider text-muted-foreground">Puntos de Golpe</span>
+          </div>
+          <span className="font-cinzel font-bold text-foreground">{hpCurrent} / {hpMax}</span>
+        </div>
+        <div className="h-3 bg-card rounded-full overflow-hidden border border-border">
+          <div className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${hpPercent}%`, background: hpPercent > 50 ? 'hsl(150 40% 45%)' : hpPercent > 25 ? 'hsl(45 70% 55%)' : 'hsl(0 70% 50%)' }} />
+        </div>
+        <div className="flex items-center justify-center gap-2 mt-3">
+          <button onClick={() => onUpdateHP(Math.max(0, hpCurrent - 1))} className="w-8 h-8 rounded bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors font-bold text-sm">−</button>
+          <span className="text-sm font-inter text-muted-foreground w-16 text-center">{character.hp_temp ? `+${character.hp_temp} temp` : ''}</span>
+          <button onClick={() => onUpdateHP(Math.min(hpMax, hpCurrent + 1))} className="w-8 h-8 rounded bg-chart-4/20 text-chart-4 hover:bg-chart-4/30 transition-colors font-bold text-sm">+</button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-muted/50 rounded-lg p-3 border border-border text-center">
+          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">Dados de Golpe</div>
+          <div className="text-lg font-cinzel font-bold text-foreground">{character.hit_dice || '1d8'}</div>
+        </div>
+        <div className="bg-muted/50 rounded-lg p-3 border border-border text-center">
+          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">Percepción Pasiva</div>
+          <div className="text-lg font-cinzel font-bold text-foreground">{character.passive_perception || 10}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+components/character/SkillsList.jsx
+import React from 'react';
+
+const SKILLS = [
+  { key: 'acrobatics', label: 'Acrobacias', ability: 'dexterity' },
+  { key: 'animal_handling', label: 'T. con Animales', ability: 'wisdom' },
+  { key: 'arcana', label: 'Arcano', ability: 'intelligence' },
+  { key: 'athletics', label: 'Atletismo', ability: 'strength' },
+  { key: 'deception', label: 'Engaño', ability: 'charisma' },
+  { key: 'history', label: 'Historia', ability: 'intelligence' },
+  { key: 'insight', label: 'Perspicacia', ability: 'wisdom' },
+  { key: 'intimidation', label: 'Intimidación', ability: 'charisma' },
+  { key: 'investigation', label: 'Investigación', ability: 'intelligence' },
+  { key: 'medicine', label: 'Medicina', ability: 'wisdom' },
+  { key: 'nature', label: 'Naturaleza', ability: 'intelligence' },
+  { key: 'perception', label: 'Percepción', ability: 'wisdom' },
+  { key: 'persuasion', label: 'Persuasión', ability: 'charisma' },
+  { key: 'religion', label: 'Religión', ability: 'intelligence' },
+  { key: 'sleight_of_hand', label: 'Juego de Manos', ability: 'dexterity' },
+  { key: 'stealth', label: 'Sigilo', ability: 'dexterity' },
+  { key: 'survival', label: 'Supervivencia', ability: 'wisdom' },
+];
+
+const ABILITY_ABBR = { strength: 'FUE', dexterity: 'DES', constitution: 'CON', intelligence: 'INT', wisdom: 'SAB', charisma: 'CAR' };
+
+function getModifier(score) { return Math.floor((score - 10) / 2); }
+function formatMod(mod) { return mod >= 0 ? `+${mod}` : `${mod}`; }
+
+export default function SkillsList({ character }) {
+  const skills = character.skills || {};
+  const profBonus = character.proficiency_bonus || 2;
+
+  return (
+    <div className="space-y-0.5">
+      {SKILLS.map((skill) => {
+        const mod = getModifier(character[skill.ability] || 10);
+        const isProficient = skills[skill.key] || false;
+        const total = isProficient ? mod + profBonus : mod;
+        return (
+          <div key={skill.key} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-muted/50 transition-colors">
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isProficient ? 'bg-primary' : 'bg-border'}`} />
+            <span className="text-sm font-inter font-medium text-primary w-8 text-right">{formatMod(total)}</span>
+            <span className="text-sm font-inter text-foreground flex-1">{skill.label}</span>
+            <span className="text-[10px] font-inter text-muted-foreground tracking-wide">{ABILITY_ABBR[skill.ability]}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+components/character/SpellsPanel.jsx
+import React from 'react';
+import { Wand2, Flame } from 'lucide-react';
+
+function SpellSlotTracker({ level, total, used, onToggle }) {
+  if (!total) return null;
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="text-xs font-inter text-muted-foreground w-16">Nivel {level}</span>
+      <div className="flex gap-1">
+        {Array.from({ length: total }).map((_, i) => (
+          <button key={i} onClick={() => onToggle(level, i)}
+            className={`w-6 h-6 rounded border transition-all ${i < used ? 'bg-muted border-border text-muted-foreground' : 'bg-primary/20 border-primary/40 text-primary'}`}>
+            <Flame className={`w-3 h-3 mx-auto ${i < used ? 'opacity-30' : ''}`} />
+          </button>
+        ))}
+      </div>
+      <span className="text-xs text-muted-foreground font-inter">{total - used}/{total}</span>
+    </div>
+  );
+}
+
+function SpellList({ title, spells }) {
+  if (!spells || spells.length === 0) return null;
+  return (
+    <div className="mb-4">
+      <h4 className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-2">{title}</h4>
+      <div className="space-y-1">
+        {spells.map((spell, i) => (
+          <div key={i} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 transition-colors">
+            <Wand2 className="w-3 h-3 text-primary flex-shrink-0" />
+            <span className="text-sm font-inter text-foreground">{spell}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function SpellsPanel({ character, onToggleSlot }) {
+  const slots = character.spell_slots || {};
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-muted/50 rounded-lg p-3 border border-border text-center">
+          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">Aptitud Mágica</div>
+          <div className="text-sm font-cinzel font-bold text-primary">{character.spellcasting_ability || 'CAR'}</div>
+        </div>
+        <div className="bg-muted/50 rounded-lg p-3 border border-border text-center">
+          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">CD Salvación</div>
+          <div className="text-lg font-cinzel font-bold text-foreground">{character.spell_save_dc || 0}</div>
+        </div>
+        <div className="bg-muted/50 rounded-lg p-3 border border-border text-center">
+          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">Bonif. Ataque</div>
+          <div className="text-lg font-cinzel font-bold text-foreground">+{character.spell_attack_bonus || 0}</div>
+        </div>
+      </div>
+      <div className="bg-muted/50 rounded-lg p-3 border border-border">
+        <h4 className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-3">Espacios de Conjuro</h4>
+        <SpellSlotTracker level={1} total={slots.level_1_total || 0} used={slots.level_1_used || 0} onToggle={onToggleSlot} />
+        <SpellSlotTracker level={2} total={slots.level_2_total || 0} used={slots.level_2_used || 0} onToggle={onToggleSlot} />
+        <SpellSlotTracker level={3} total={slots.level_3_total || 0} used={slots.level_3_used || 0} onToggle={onToggleSlot} />
+      </div>
+      <SpellList title="Trucos" spells={character.cantrips} />
+      <SpellList title="Nivel 1" spells={character.spells_level_1} />
+      <SpellList title="Nivel 2" spells={character.spells_level_2} />
+      <SpellList title="Nivel 3" spells={character.spells_level_3} />
+    </div>
+  );
+}
+components/character/TraitsPanel.jsx
+import React from 'react';
+
+export default function TraitsPanel({ character }) {
+  const sections = [
+    { label: 'Rasgos y Atributos', content: character.traits },
+    { label: 'Rasgos de Personalidad', content: character.personality_traits },
+    { label: 'Ideales', content: character.ideals },
+    { label: 'Vínculos', content: character.bonds },
+    { label: 'Defectos', content: character.flaws },
+    { label: 'Otras Competencias e Idiomas', content: character.other_proficiencies },
+  ].filter(s => s.content);
+
+  if (sections.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      {sections.map((section) => (
+        <div key={section.label} className="bg-muted/50 rounded-lg p-3 border border-border">
+          <h4 className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-2">{section.label}</h4>
+          <p className="text-sm font-inter text-foreground leading-relaxed whitespace-pre-wrap">{section.content}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+components/character/CurrencyPanel.jsx
+(ya lo tienes en el contexto del sistema, aquí el código completo)
+
+import React, { useState } from 'react';
+import { Coins, Plus, Minus } from 'lucide-react';
+
+const CURRENCIES = [
+  { key: 'platinum', label: 'PPL', color: 'text-slate-300', bg: 'bg-slate-700/50', border: 'border-slate-500/50' },
+  { key: 'gold',     label: 'PO',  color: 'text-yellow-400', bg: 'bg-yellow-900/30', border: 'border-yellow-600/40' },
+  { key: 'electrum', label: 'PE',  color: 'text-teal-300',   bg: 'bg-teal-900/30',   border: 'border-teal-600/40' },
+  { key: 'silver',   label: 'PP',  color: 'text-gray-300',   bg: 'bg-gray-700/40',   border: 'border-gray-500/40' },
+  { key: 'copper',   label: 'PC',  color: 'text-orange-400', bg: 'bg-orange-900/30', border: 'border-orange-700/40' },
+];
+
+export default function CurrencyPanel({ character, onUpdate }) {
+  const [amounts, setAmounts] = useState({});
+
+  const handleChange = (key, delta) => {
+    const current = character[key] ?? 0;
+    const newVal = Math.max(0, current + delta);
+    onUpdate({ [key]: newVal });
+  };
+
+  const handleInput = (key, val) => setAmounts(a => ({ ...a, [key]: val }));
+
+  const handleBlur = (key) => {
+    const val = parseInt(amounts[key]);
+    if (!isNaN(val) && val >= 0) onUpdate({ [key]: val });
+    setAmounts(a => ({ ...a, [key]: undefined }));
+  };
+
+  return (
+    <div className="bg-card rounded-xl border border-border p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Coins className="w-4 h-4 text-primary" />
+        <h3 className="text-xs font-inter font-semibold uppercase tracking-wider text-muted-foreground">Monedas</h3>
+      </div>
+      <div className="grid grid-cols-5 gap-2">
+        {CURRENCIES.map(({ key, label, color, bg, border }) => {
+          const displayVal = amounts[key] !== undefined ? amounts[key] : (character[key] ?? 0);
+          return (
+            <div key={key} className={`${bg} ${border} border rounded-lg p-2 flex flex-col items-center gap-1`}>
+              <button onClick={() => handleChange(key, 1)} className={`w-6 h-6 rounded flex items-center justify-center hover:bg-white/10 transition-colors ${color}`}>
+                <Plus className="w-3 h-3" />
+              </button>
+              <input type="number" min="0" value={displayVal}
+                onChange={e => handleInput(key, e.target.value)}
+                onBlur={() => handleBlur(key)}
+                className={`w-full text-center text-lg font-cinzel font-bold ${color} bg-transparent border-none outline-none focus:bg-white/5 rounded`} />
+              <div className={`text-[10px] font-inter font-semibold tracking-wider ${color} opacity-80`}>{label}</div>
+              <button onClick={() => handleChange(key, -1)} className={`w-6 h-6 rounded flex items-center justify-center hover:bg-white/10 transition-colors ${color}`}>
+                <Minus className="w-3 h-3" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+components/character/InventoryPanel.jsx
+import React, { useState } from 'react';
+import { Package, Plus, Trash2 } from 'lucide-react';
+
+export default function InventoryPanel({ items = [], onChange }) {
+  const [newItem, setNewItem] = useState('');
+
+  const add = () => {
+    const trimmed = newItem.trim();
+    if (!trimmed) return;
+    onChange([...items, trimmed]);
+    setNewItem('');
+  };
+
+  const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
+
+  const edit = (i, val) => {
+    const updated = [...items];
+    updated[i] = val;
+    onChange(updated);
+  };
+
+  return (
+    <div className="bg-card rounded-xl border border-border p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Package className="w-4 h-4 text-primary" />
+        <h3 className="text-xs font-inter font-semibold uppercase tracking-wider text-muted-foreground">Inventario</h3>
+        <span className="ml-auto text-xs text-muted-foreground">{items.length} objetos</span>
+      </div>
+      <div className="space-y-1 mb-3 max-h-48 overflow-y-auto">
+        {items.length === 0 && <p className="text-sm text-muted-foreground font-inter italic text-center py-3">Sin objetos</p>}
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center gap-2 group">
+            <span className="text-muted-foreground text-xs w-3 flex-shrink-0">·</span>
+            <input value={item} onChange={e => edit(i, e.target.value)}
+              className="flex-1 bg-transparent text-sm font-inter text-foreground border-b border-transparent focus:border-primary/50 outline-none py-0.5 transition-colors" />
+            <button onClick={() => remove(i)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all flex-shrink-0">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2 border-t border-border pt-3">
+        <input value={newItem} onChange={e => setNewItem(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()}
+          placeholder="Añadir objeto..."
+          className="flex-1 bg-muted border border-border rounded px-3 py-1.5 text-sm font-inter text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
+        <button onClick={add} className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded px-3 py-1.5 transition-colors">
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}

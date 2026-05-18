@@ -1,0 +1,8 @@
+{
+  "appId": "com.dnd.tracker",
+  "appName": "D&D Tracker",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
