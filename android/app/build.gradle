@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.controlgastos.app"
+    namespace "com.dnd.character"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.controlgastos.app"
+        applicationId "com.dnd.character"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
