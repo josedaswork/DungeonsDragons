@@ -1,5 +1,5 @@
 /**
- * D&D Character Tracker - Google Apps Script Backend
+ * D&D Character - Google Apps Script Backend
  * 
  * INSTRUCCIONES DE DESPLIEGUE:
  * 1. Crear una Google Spreadsheet nueva
@@ -41,7 +41,7 @@ function doGet(e) {
         result = deleteCharacter(e.parameter.id);
         break;
       case 'ping':
-        result = { success: true, message: 'D&D Tracker conectado' };
+        result = { success: true, message: 'D&D Character conectado' };
         break;
       default:
         result = { error: 'Acción no válida: ' + action };

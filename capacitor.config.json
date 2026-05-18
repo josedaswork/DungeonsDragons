@@ -1,6 +1,6 @@
 {
-  "appId": "com.dnd.tracker",
-  "appName": "D&D Tracker",
+  "appId": "com.dnd.character",
+  "appName": "D&D Character",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

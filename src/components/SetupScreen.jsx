@@ -47,7 +47,7 @@ export default function SetupScreen({ onSave, initialUrl }) {
           <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
             <Sword className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="text-2xl font-cinzel font-bold text-foreground">D&D Character Tracker</h1>
+          <h1 className="text-2xl font-cinzel font-bold text-foreground">D&D Character</h1>
           <p className="text-sm font-inter text-muted-foreground">
             Conecta tu Google Spreadsheet para guardar tus personajes en la nube.
           </p>
