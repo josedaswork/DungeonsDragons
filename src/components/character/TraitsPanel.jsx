@@ -1,13 +1,15 @@
 import React from 'react';
+import { useI18n } from '@/lib/i18n';
 
 export default function TraitsPanel({ character }) {
+  const { t } = useI18n();
   const sections = [
-    { label: 'Rasgos y Atributos', content: character.traits },
-    { label: 'Rasgos de Personalidad', content: character.personality_traits },
-    { label: 'Ideales', content: character.ideals },
-    { label: 'Vínculos', content: character.bonds },
-    { label: 'Defectos', content: character.flaws },
-    { label: 'Otras Competencias e Idiomas', content: character.other_proficiencies },
+    { label: t('traits_and_features'), content: character.traits },
+    { label: t('personality_traits'), content: character.personality_traits },
+    { label: t('ideals'), content: character.ideals },
+    { label: t('bonds'), content: character.bonds },
+    { label: t('flaws'), content: character.flaws },
+    { label: t('other_proficiencies'), content: character.other_proficiencies },
   ].filter(s => s.content);
 
   if (sections.length === 0) return null;

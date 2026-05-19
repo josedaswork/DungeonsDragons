@@ -1,11 +1,13 @@
 import React from 'react';
 import { Shield, Zap, Footprints, Heart } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 export default function CombatStats({ character, onUpdateHP }) {
+  const { t } = useI18n();
   const stats = [
-    { label: 'Clase de Armadura', value: character.armor_class || 10, icon: Shield, color: 'text-primary' },
-    { label: 'Iniciativa', value: `+${character.initiative || 0}`, icon: Zap, color: 'text-chart-2' },
-    { label: 'Velocidad', value: `${character.speed || 30} ft`, icon: Footprints, color: 'text-chart-3' },
+    { label: t('armor_class'), value: character.armor_class || 10, icon: Shield, color: 'text-primary' },
+    { label: t('initiative'), value: `+${character.initiative || 0}`, icon: Zap, color: 'text-chart-2' },
+    { label: t('speed'), value: `${character.speed || 30} ft`, icon: Footprints, color: 'text-chart-3' },
   ];
 
   const hpMax = character.hp_max || 0;
@@ -27,7 +29,7 @@ export default function CombatStats({ character, onUpdateHP }) {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Heart className="w-4 h-4 text-destructive" />
-            <span className="text-xs font-inter font-semibold uppercase tracking-wider text-muted-foreground">Puntos de Golpe</span>
+            <span className="text-xs font-inter font-semibold uppercase tracking-wider text-muted-foreground">{t('hit_points')}</span>
           </div>
           <span className="font-cinzel font-bold text-foreground">{hpCurrent} / {hpMax}</span>
         </div>
@@ -43,11 +45,11 @@ export default function CombatStats({ character, onUpdateHP }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-muted/50 rounded-lg p-3 border border-border text-center">
-          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">Dados de Golpe</div>
+          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">{t('hit_dice')}</div>
           <div className="text-lg font-cinzel font-bold text-foreground">{character.hit_dice || '1d8'}</div>
         </div>
         <div className="bg-muted/50 rounded-lg p-3 border border-border text-center">
-          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">Percepción Pasiva</div>
+          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">{t('passive_perception')}</div>
           <div className="text-lg font-cinzel font-bold text-foreground">{character.passive_perception || 10}</div>
         </div>
       </div>

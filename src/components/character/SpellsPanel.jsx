@@ -1,11 +1,12 @@
 import React from 'react';
 import { Wand2, Flame } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
-function SpellSlotTracker({ level, total, used, onToggle }) {
+function SpellSlotTracker({ level, total, used, onToggle, levelLabel }) {
   if (!total) return null;
   return (
     <div className="flex items-center gap-2 mb-3">
-      <span className="text-xs font-inter text-muted-foreground w-16">Nivel {level}</span>
+      <span className="text-xs font-inter text-muted-foreground w-16">{levelLabel} {level}</span>
       <div className="flex gap-1">
         {Array.from({ length: total }).map((_, i) => (
           <button key={i} onClick={() => onToggle(level, i)}
@@ -37,33 +38,34 @@ function SpellList({ title, spells }) {
 }
 
 export default function SpellsPanel({ character, onToggleSlot }) {
+  const { t } = useI18n();
   const slots = character.spell_slots || {};
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-muted/50 rounded-lg p-3 border border-border text-center">
-          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">Aptitud Mágica</div>
-          <div className="text-sm font-cinzel font-bold text-primary">{character.spellcasting_ability || 'CAR'}</div>
+          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">{t('spellcasting_ability')}</div>
+          <div className="text-sm font-cinzel font-bold text-primary">{character.spellcasting_ability || t('abbr_charisma')}</div>
         </div>
         <div className="bg-muted/50 rounded-lg p-3 border border-border text-center">
-          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">CD Salvación</div>
+          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">{t('spell_save_dc')}</div>
           <div className="text-lg font-cinzel font-bold text-foreground">{character.spell_save_dc || 0}</div>
         </div>
         <div className="bg-muted/50 rounded-lg p-3 border border-border text-center">
-          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">Bonif. Ataque</div>
+          <div className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-1">{t('spell_attack_bonus')}</div>
           <div className="text-lg font-cinzel font-bold text-foreground">+{character.spell_attack_bonus || 0}</div>
         </div>
       </div>
       <div className="bg-muted/50 rounded-lg p-3 border border-border">
-        <h4 className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-3">Espacios de Conjuro</h4>
-        <SpellSlotTracker level={1} total={slots.level_1_total || 0} used={slots.level_1_used || 0} onToggle={onToggleSlot} />
-        <SpellSlotTracker level={2} total={slots.level_2_total || 0} used={slots.level_2_used || 0} onToggle={onToggleSlot} />
-        <SpellSlotTracker level={3} total={slots.level_3_total || 0} used={slots.level_3_used || 0} onToggle={onToggleSlot} />
+        <h4 className="text-[10px] font-inter font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t('spell_slots')}</h4>
+        <SpellSlotTracker level={1} total={slots.level_1_total || 0} used={slots.level_1_used || 0} onToggle={onToggleSlot} levelLabel={t('level')} />
+        <SpellSlotTracker level={2} total={slots.level_2_total || 0} used={slots.level_2_used || 0} onToggle={onToggleSlot} levelLabel={t('level')} />
+        <SpellSlotTracker level={3} total={slots.level_3_total || 0} used={slots.level_3_used || 0} onToggle={onToggleSlot} levelLabel={t('level')} />
       </div>
-      <SpellList title="Trucos" spells={character.cantrips} />
-      <SpellList title="Nivel 1" spells={character.spells_level_1} />
-      <SpellList title="Nivel 2" spells={character.spells_level_2} />
-      <SpellList title="Nivel 3" spells={character.spells_level_3} />
+      <SpellList title={t('cantrips')} spells={character.cantrips} />
+      <SpellList title={`${t('level')} 1`} spells={character.spells_level_1} />
+      <SpellList title={`${t('level')} 2`} spells={character.spells_level_2} />
+      <SpellList title={`${t('level')} 3`} spells={character.spells_level_3} />
     </div>
   );
 }

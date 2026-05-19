@@ -1,5 +1,6 @@
 const SCRIPT_URL_KEY = 'dnd_script_url'
 const CACHE_KEY = 'dnd_characters_cache'
+const CHAR_CACHE_PREFIX = 'dnd_char_'
 
 // --- Script URL management ---
 export function getScriptUrl() {
@@ -29,6 +30,20 @@ export function getCachedCharacters() {
 
 export function clearCache() {
   localStorage.removeItem(CACHE_KEY)
+  // Clear all individual character caches
+  Object.keys(localStorage).forEach(k => {
+    if (k.startsWith(CHAR_CACHE_PREFIX)) localStorage.removeItem(k)
+  })
+}
+
+export function getCachedCharacter(id) {
+  try {
+    return JSON.parse(localStorage.getItem(CHAR_CACHE_PREFIX + id) || 'null')
+  } catch { return null }
+}
+
+function setCachedCharacter(id, char) {
+  localStorage.setItem(CHAR_CACHE_PREFIX + id, JSON.stringify(char))
 }
 
 // --- API calls ---
@@ -65,7 +80,9 @@ export async function listCharacters() {
 
 export async function getCharacter(id) {
   const data = await callApi({ action: 'get', id })
-  return data.character
+  const char = data.character
+  if (char) setCachedCharacter(id, char)
+  return char
 }
 
 export async function createCharacter(name) {

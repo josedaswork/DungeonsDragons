@@ -18,7 +18,11 @@ function App() {
   if (showSetup) {
     return (
       <>
-        <SetupScreen onSave={handleSetupSave} initialUrl={scriptUrl} />
+        <SetupScreen
+          onSave={handleSetupSave}
+          onCancel={scriptUrl ? () => setShowSetup(false) : undefined}
+          initialUrl={scriptUrl}
+        />
         <Toaster richColors position="top-center" />
       </>
     )

@@ -159,11 +159,12 @@ var LAYOUT = {
       { row: 49, key: 'skills.medicine', label: 'Medicina' },
       { row: 50, key: 'skills.nature', label: 'Naturaleza' },
       { row: 51, key: 'skills.perception', label: 'Percepción' },
-      { row: 52, key: 'skills.persuasion', label: 'Persuasión' },
-      { row: 53, key: 'skills.religion', label: 'Religión' },
-      { row: 54, key: 'skills.stealth', label: 'Sigilo' },
-      { row: 55, key: 'skills.survival', label: 'Supervivencia' },
-      { row: 56, key: 'other_proficiencies', label: 'Otras Competencias e Idiomas' },
+      { row: 52, key: 'skills.performance', label: 'Interpretación' },
+      { row: 53, key: 'skills.persuasion', label: 'Persuasión' },
+      { row: 54, key: 'skills.religion', label: 'Religión' },
+      { row: 55, key: 'skills.stealth', label: 'Sigilo' },
+      { row: 56, key: 'skills.survival', label: 'Supervivencia' },
+      { row: 57, key: 'other_proficiencies', label: 'Otras Competencias e Idiomas' },
     ]
   },
   MONEDAS: {
@@ -457,6 +458,139 @@ function getNestedValue(obj, path) {
   return obj[parts[0]][parts[1]];
 }
 
+// ===================== RELLENAR WARLOCK KENKU =====================
+// Ejecutar esta función UNA VEZ desde el editor de Apps Script
+// para rellenar un personaje existente con los datos del Warlock Kenku.
+// Cambiar SHEET_NAME por el nombre de la hoja de tu personaje.
+
+function rellenarWarlockKenku() {
+  var SHEET_NAME = ''; // ← Pon aquí el nombre de la hoja de tu personaje
+
+  if (!SHEET_NAME) {
+    // Si no se especifica, usar la primera hoja que no sea "Índice"
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheets = ss.getSheets();
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getName() !== 'Índice') {
+        SHEET_NAME = sheets[i].getName();
+        break;
+      }
+    }
+    if (!SHEET_NAME) {
+      SpreadsheetApp.getUi().alert('No se encontró ningún personaje. Crea uno primero desde la app.');
+      return;
+    }
+  }
+
+  var warlock = {
+    // --- INFO ---
+    name: 'Kenku Warlock',
+    class_level: 'Brujo 1',
+    race: 'Kenku',
+    background: '',
+    alignment: '',
+    experience: 0,
+    player_name: '',
+    inspiration: false,
+
+    // --- ATRIBUTOS ---
+    strength: 10,
+    dexterity: 12,
+    constitution: 18,
+    intelligence: 12,
+    wisdom: 9,
+    charisma: 18,
+    proficiency_bonus: 2,
+
+    // --- COMBATE ---
+    armor_class: 12,       // Armadura de cuero (11 + DEX mod 1)
+    initiative: 1,         // DEX mod
+    speed: 30,             // Kenku
+    hp_max: 12,            // d8(8) + CON mod(4)
+    hp_current: 12,
+    hp_temp: 0,
+    hit_dice: '1d8',
+    passive_perception: 9, // 10 + WIS mod(-1)
+
+    // --- TIRADAS DE SALVACIÓN (ninguna con competencia) ---
+    saving_throws: {
+      strength: false,
+      dexterity: false,
+      constitution: false,
+      intelligence: false,
+      wisdom: false,
+      charisma: false,
+    },
+
+    // --- HABILIDADES (competencia en: Arcano, Intimidación, Juego de Manos, Sigilo) ---
+    skills: {
+      acrobatics: false,
+      animal_handling: false,
+      arcana: true,
+      athletics: false,
+      deception: false,
+      history: false,
+      insight: false,
+      intimidation: true,
+      investigation: false,
+      sleight_of_hand: true,
+      medicine: false,
+      nature: false,
+      perception: false,
+      performance: false,
+      persuasion: false,
+      religion: false,
+      stealth: true,
+      survival: false,
+    },
+
+    // --- MONEDAS ---
+    platinum: 0,
+    gold: 0,
+    electrum: 0,
+    silver: 0,
+    copper: 0,
+
+    // --- CONJUROS (Warlock nivel 1) ---
+    spellcasting_class: 'Brujo',
+    spellcasting_ability: 'Carisma',
+    spell_save_dc: 14,          // 8 + prof(2) + CHA mod(4)
+    spell_attack_bonus: 6,      // prof(2) + CHA mod(4)
+    spell_slots: {
+      level_1_total: 1,
+      level_1_used: 0,
+      level_2_total: 0,
+      level_2_used: 0,
+      level_3_total: 0,
+      level_3_used: 0,
+    },
+
+    // --- LISTAS (vacías por ahora, añade tus conjuros) ---
+    cantrips: [],
+    spells_level_1: [],
+    spells_level_2: [],
+    spells_level_3: [],
+    traits: '',
+    personality_traits: '',
+    ideals: '',
+    bonds: '',
+    flaws: '',
+    equipment: '',
+    inventory: [],
+  };
+
+  writeCharacterToSheet(SHEET_NAME, warlock);
+  updateIndex(SHEET_NAME, warlock);
+
+  SpreadsheetApp.getUi().alert(
+    '¡Warlock Kenku cargado!\n\n' +
+    'Personaje: ' + SHEET_NAME + '\n' +
+    'Clase: Brujo 1 | Raza: Kenku\n' +
+    'FUE:10 DES:12 CON:18 INT:12 SAB:9 CAR:18\n\n' +
+    'Abre la app y pulsa Refrescar para ver los datos.'
+  );
+}
+
 // ===================== CRUD =====================
 
 function createCharacter(name) {
@@ -486,15 +620,40 @@ function createCharacter(name) {
 }
 
 function getCharacter(id) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(id);
+
+  // Si no existe la hoja, crearla e inicializarla
+  if (!sheet) {
+    sheet = ss.insertSheet(id);
+    initCharacterSheet(sheet);
+    sheet.getRange(2, 2).setValue(id);
+    // Registrar en índice si no está
+    var index = getIndexSheet();
+    var data = index.getDataRange().getValues();
+    var found = false;
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === id) { found = true; break; }
+    }
+    if (!found) index.appendRow([id, id, '', '']);
+  }
+
   var char = readCharacterFromSheet(id);
-  if (!char) return { error: 'Personaje no encontrado: ' + id };
   return { character: char };
 }
 
 function updateCharacter(id, jsonData) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(id);
-  if (!sheet) return { error: 'Hoja no encontrada: ' + id };
+
+  // Si no existe la hoja, crearla e inicializarla
+  if (!sheet) {
+    sheet = ss.insertSheet(id);
+    initCharacterSheet(sheet);
+    sheet.getRange(2, 2).setValue(id);
+    var index = getIndexSheet();
+    index.appendRow([id, id, '', '']);
+  }
 
   var updates = {};
   try { updates = JSON.parse(jsonData); } catch(e) { return { error: 'JSON inválido' }; }

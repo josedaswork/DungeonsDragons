@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { createCharacter, deleteCharacter, getCachedCharacters } from '@/lib/storage';
+import { useI18n } from '@/lib/i18n';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Menu, Plus, Trash2, User, Check, Loader2 } from 'lucide-react';
+import { Menu, Plus, Trash2, User, Check, Loader2, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CharacterMenu({ activeCharacterId, onSelect, onDataChange }) {
+  const { t, lang, switchLang } = useI18n();
   const [newName, setNewName] = useState('');
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -21,9 +23,9 @@ export default function CharacterMenu({ activeCharacterId, onSelect, onDataChang
       onSelect(newChar.id);
       await onDataChange();
       setNewName('');
-      toast.success('Personaje creado');
+      toast.success(t('character_created'));
     } catch (err) {
-      toast.error('Error creando personaje: ' + err.message);
+      toast.error(t('error_creating') + err.message);
     } finally {
       setCreating(false);
     }
@@ -33,7 +35,7 @@ export default function CharacterMenu({ activeCharacterId, onSelect, onDataChang
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
-    if (!confirm('¿Eliminar este personaje?')) return;
+    if (!confirm(t('delete_confirm'))) return;
     try {
       await deleteCharacter(id);
       if (id === activeCharacterId) {
@@ -41,9 +43,9 @@ export default function CharacterMenu({ activeCharacterId, onSelect, onDataChang
         onSelect(remaining.length > 0 ? remaining[0].id : null);
       }
       await onDataChange();
-      toast.success('Personaje eliminado');
+      toast.success(t('character_deleted'));
     } catch (err) {
-      toast.error('Error eliminando: ' + err.message);
+      toast.error(t('error_deleting') + err.message);
     }
   };
 
@@ -56,7 +58,7 @@ export default function CharacterMenu({ activeCharacterId, onSelect, onDataChang
       </SheetTrigger>
       <SheetContent side="left" className="bg-card border-border text-foreground w-72">
         <SheetHeader>
-          <SheetTitle className="font-cinzel text-primary text-lg">Personajes</SheetTitle>
+          <SheetTitle className="font-cinzel text-primary text-lg">{t('characters')}</SheetTitle>
         </SheetHeader>
         <div className="mt-6 space-y-2">
           {characters.map(c => (
@@ -75,16 +77,31 @@ export default function CharacterMenu({ activeCharacterId, onSelect, onDataChang
               </button>
             </div>
           ))}
-          {characters.length === 0 && <p className="text-sm text-muted-foreground font-inter italic text-center py-4">Sin personajes</p>}
+          {characters.length === 0 && <p className="text-sm text-muted-foreground font-inter italic text-center py-4">{t('no_characters')}</p>}
         </div>
         <div className="mt-6 border-t border-border pt-4 space-y-2">
-          <p className="text-xs font-inter text-muted-foreground uppercase tracking-wider">Nuevo personaje</p>
+          <p className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{t('new_character')}</p>
           <div className="flex gap-2">
             <Input value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreate()}
-              placeholder="Nombre..." className="bg-muted border-border text-foreground font-inter text-sm" />
+              placeholder={t('name_placeholder')} className="bg-muted border-border text-foreground font-inter text-sm" />
             <Button onClick={handleCreate} disabled={creating || !newName.trim()} size="icon"
               className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40 flex-shrink-0" variant="ghost">
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            </Button>
+          </div>
+        </div>
+        <div className="mt-4 border-t border-border pt-4">
+          <p className="text-xs font-inter text-muted-foreground uppercase tracking-wider mb-2">{t('language')}</p>
+          <div className="flex gap-2">
+            <Button size="sm" variant={lang === 'es' ? 'default' : 'outline'}
+              onClick={() => switchLang('es')}
+              className={`flex-1 text-xs font-inter gap-1.5 ${lang === 'es' ? 'bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}>
+              <Globe className="w-3.5 h-3.5" /> Español
+            </Button>
+            <Button size="sm" variant={lang === 'en' ? 'default' : 'outline'}
+              onClick={() => switchLang('en')}
+              className={`flex-1 text-xs font-inter gap-1.5 ${lang === 'en' ? 'bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}>
+              <Globe className="w-3.5 h-3.5" /> English
             </Button>
           </div>
         </div>

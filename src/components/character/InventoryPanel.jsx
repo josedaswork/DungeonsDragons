@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Package, Plus, Trash2 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 export default function InventoryPanel({ items = [], onChange }) {
+  const { t } = useI18n();
   const [newItem, setNewItem] = useState('');
 
   const add = () => {
@@ -23,11 +25,11 @@ export default function InventoryPanel({ items = [], onChange }) {
     <div className="bg-card rounded-xl border border-border p-4">
       <div className="flex items-center gap-2 mb-3">
         <Package className="w-4 h-4 text-primary" />
-        <h3 className="text-xs font-inter font-semibold uppercase tracking-wider text-muted-foreground">Inventario</h3>
-        <span className="ml-auto text-xs text-muted-foreground">{items.length} objetos</span>
+        <h3 className="text-xs font-inter font-semibold uppercase tracking-wider text-muted-foreground">{t('inventory')}</h3>
+        <span className="ml-auto text-xs text-muted-foreground">{items.length} {t('items_count')}</span>
       </div>
       <div className="space-y-1 mb-3 max-h-48 overflow-y-auto">
-        {items.length === 0 && <p className="text-sm text-muted-foreground font-inter italic text-center py-3">Sin objetos</p>}
+        {items.length === 0 && <p className="text-sm text-muted-foreground font-inter italic text-center py-3">{t('no_items')}</p>}
         {items.map((item, i) => (
           <div key={i} className="flex items-center gap-2 group">
             <span className="text-muted-foreground text-xs w-3 flex-shrink-0">·</span>
@@ -41,7 +43,7 @@ export default function InventoryPanel({ items = [], onChange }) {
       </div>
       <div className="flex gap-2 border-t border-border pt-3">
         <input value={newItem} onChange={e => setNewItem(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()}
-          placeholder="Añadir objeto..."
+          placeholder={t('add_item')}
           className="flex-1 bg-muted border border-border rounded px-3 py-1.5 text-sm font-inter text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors" />
         <button onClick={add} className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded px-3 py-1.5 transition-colors">
           <Plus className="w-4 h-4" />

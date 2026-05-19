@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { listCharacters, getCharacter as fetchCharacter, updateCharacter, getCachedCharacters } from '@/lib/storage';
+import { listCharacters, getCharacter as fetchCharacter, updateCharacter, getCachedCharacters, getCachedCharacter } from '@/lib/storage';
+import { useI18n } from '@/lib/i18n';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Sword, BookOpen, ScrollText, User, Pencil, RefreshCw, Settings } from 'lucide-react';
@@ -18,6 +19,7 @@ import MagicParticles from '@/components/character/MagicParticles';
 import CharacterMenu from '@/components/character/CharacterMenu';
 
 export default function CharacterSheet({ onOpenSettings }) {
+  const { t } = useI18n();
   const [editOpen, setEditOpen] = useState(false);
   const [activeId, setActiveId] = useState(null);
   const [characterList, setCharacterList] = useState(getCachedCharacters());
@@ -31,37 +33,56 @@ export default function CharacterSheet({ onOpenSettings }) {
       setCharacterList(chars);
       return chars;
     } catch (err) {
-      toast.error('Error cargando personajes: ' + err.message);
+      toast.error(t('error_loading_characters') + err.message);
       return characterList;
     }
   }, []);
 
-  const loadCharacter = useCallback(async (id) => {
+  const loadCharacter = useCallback(async (id, { background } = {}) => {
     if (!id) { setCharacter({}); return; }
-    setLoading(true);
+    if (!background) setLoading(true);
     try {
       const char = await fetchCharacter(id);
       setCharacter(char || {});
     } catch (err) {
-      toast.error('Error cargando personaje: ' + err.message);
+      if (!background) toast.error(t('error_loading_character') + err.message);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, []);
 
-  // Initial load
+  // Initial load: show cached data instantly, refresh in background
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const chars = await loadList();
-      const targetId = activeId || (chars.length > 0 ? chars[0].id : null);
-      if (targetId) {
-        setActiveId(targetId);
-        await loadCharacter(targetId);
-      } else {
+    const cached = getCachedCharacters();
+    if (cached.length > 0) {
+      const firstId = cached[0].id;
+      setActiveId(firstId);
+      const cachedChar = getCachedCharacter(firstId);
+      if (cachedChar) {
+        setCharacter(cachedChar);
         setLoading(false);
+        // Refresh in background
+        loadList();
+        loadCharacter(firstId, { background: true });
+      } else {
+        setLoading(true);
+        loadList();
+        loadCharacter(firstId);
       }
-    })();
+    } else {
+      // No cache, load from server
+      (async () => {
+        setLoading(true);
+        const chars = await loadList();
+        const targetId = chars.length > 0 ? chars[0].id : null;
+        if (targetId) {
+          setActiveId(targetId);
+          await loadCharacter(targetId);
+        } else {
+          setLoading(false);
+        }
+      })();
+    }
   }, []);
 
   // When activeId changes, load full character
@@ -85,7 +106,7 @@ export default function CharacterSheet({ onOpenSettings }) {
     try {
       await updateCharacter(character.id, data);
     } catch (err) {
-      toast.error('Error guardando: ' + err.message);
+      toast.error(t('error_saving') + err.message);
       await loadCharacter(character.id); // revert
     }
   };
@@ -98,9 +119,9 @@ export default function CharacterSheet({ onOpenSettings }) {
       setEditOpen(false);
       await loadList();
       await loadCharacter(character.id);
-      toast.success('Personaje guardado');
+      toast.success(t('character_saved'));
     } catch (err) {
-      toast.error('Error guardando: ' + err.message);
+      toast.error(t('error_saving') + err.message);
     } finally {
       setSaving(false);
     }
@@ -117,15 +138,18 @@ export default function CharacterSheet({ onOpenSettings }) {
   };
 
   const abilities = [
-    { key: 'strength', label: 'FUE' },
-    { key: 'dexterity', label: 'DES' },
-    { key: 'constitution', label: 'CON' },
-    { key: 'intelligence', label: 'INT' },
-    { key: 'wisdom', label: 'SAB' },
-    { key: 'charisma', label: 'CAR' },
+    { key: 'strength', label: t('ability_strength') },
+    { key: 'dexterity', label: t('ability_dexterity') },
+    { key: 'constitution', label: t('ability_constitution') },
+    { key: 'intelligence', label: t('ability_intelligence') },
+    { key: 'wisdom', label: t('ability_wisdom') },
+    { key: 'charisma', label: t('ability_charisma') },
   ];
 
-  const saves = character.saving_throws || {};
+  const savesRaw = character.saving_throws || {};
+  const saves = Object.fromEntries(
+    Object.entries(savesRaw).map(([k, v]) => [k, v === true])
+  );
 
   if (loading && characterList.length === 0) {
     return (
@@ -147,9 +171,9 @@ export default function CharacterSheet({ onOpenSettings }) {
             <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
               <Sword className="w-10 h-10 text-primary" />
             </div>
-            <h2 className="text-xl font-cinzel font-bold text-foreground">No hay personaje</h2>
+            <h2 className="text-xl font-cinzel font-bold text-foreground">{t('no_character')}</h2>
             <p className="text-sm font-inter text-muted-foreground">
-              Abre el menú (☰) para crear tu primer personaje.
+              {t('no_character_hint')}
             </p>
           </div>
         </div>
@@ -182,7 +206,10 @@ export default function CharacterSheet({ onOpenSettings }) {
 
       <div className="relative z-10 max-w-4xl mx-auto p-4 sm:p-6 space-y-6 pt-16">
         <div className="relative">
-          <CharacterHeader character={character} />
+          <CharacterHeader
+            character={character}
+            onToggleInspiration={() => handleUpdate({ inspiration: !character.inspiration })}
+          />
           <Button
             onClick={() => setEditOpen(true)}
             size="sm"
@@ -191,7 +218,7 @@ export default function CharacterSheet({ onOpenSettings }) {
             variant="ghost"
           >
             <Pencil className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline text-xs">Editar</span>
+            <span className="hidden sm:inline text-xs">{t('edit')}</span>
           </Button>
         </div>
 
@@ -201,7 +228,7 @@ export default function CharacterSheet({ onOpenSettings }) {
               key={a.key}
               label={a.label}
               score={character[a.key] || 10}
-              isProficientSave={saves[a.key] || false}
+              isProficientSave={saves[a.key] === true}
               profBonus={character.proficiency_bonus || 2}
             />
           ))}
@@ -220,16 +247,16 @@ export default function CharacterSheet({ onOpenSettings }) {
         <Tabs defaultValue="combat" className="w-full">
           <TabsList className="w-full bg-card border border-border">
             <TabsTrigger value="combat" className="flex-1 gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <Sword className="w-4 h-4" /><span className="hidden sm:inline">Combate</span>
+              <Sword className="w-4 h-4" /><span className="hidden sm:inline">{t('tab_combat')}</span>
             </TabsTrigger>
             <TabsTrigger value="skills" className="flex-1 gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <User className="w-4 h-4" /><span className="hidden sm:inline">Habilidades</span>
+              <User className="w-4 h-4" /><span className="hidden sm:inline">{t('tab_skills')}</span>
             </TabsTrigger>
             <TabsTrigger value="spells" className="flex-1 gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <BookOpen className="w-4 h-4" /><span className="hidden sm:inline">Conjuros</span>
+              <BookOpen className="w-4 h-4" /><span className="hidden sm:inline">{t('tab_spells')}</span>
             </TabsTrigger>
             <TabsTrigger value="traits" className="flex-1 gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <ScrollText className="w-4 h-4" /><span className="hidden sm:inline">Rasgos</span>
+              <ScrollText className="w-4 h-4" /><span className="hidden sm:inline">{t('tab_traits')}</span>
             </TabsTrigger>
           </TabsList>
 
