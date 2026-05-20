@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2, Save, Wand2, Sparkles } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 
 function Field({ label, value, onChange, type = 'text', placeholder }) {
@@ -48,16 +48,190 @@ function Toggle({ label, checked, onChange }) {
   );
 }
 
+/* ---- Spell helpers ---- */
+/** Normalize any spell format into a structured object.
+ *  Handles: plain string, {name,desc} with JSON in desc, {name,...structured} */
+function normalizeSpell(s) {
+  if (typeof s === 'string') return { name: s };
+  if (!s) return { name: '' };
+  const result = { ...s };
+  // If 'desc' contains JSON (from old server writing JSON to col B as plain desc), parse it
+  if (result.desc && typeof result.desc === 'string' && !result.type && !result.casting_time && !result.description) {
+    try {
+      const parsed = JSON.parse(result.desc);
+      if (typeof parsed === 'object' && parsed !== null) {
+        Object.assign(result, parsed);
+        delete result.desc;
+      }
+    } catch { /* not JSON, keep as legacy description */ }
+  }
+  // Migrate legacy 'desc' to 'description'
+  if (result.desc && !result.description) {
+    result.description = result.desc;
+    delete result.desc;
+  }
+  return result;
+}
+
+/* ---- Spell Editor Dialog ---- */
+function SpellEditorDialog({ spell, open, onClose, onSave }) {
+  const { t } = useI18n();
+  const [form, setForm] = useState({});
+
+  useEffect(() => {
+    if (open && spell) {
+      const s = normalizeSpell(spell);
+      setForm({
+        name: s.name || '',
+        type: s.type || '',
+        casting_time: s.casting_time || '',
+        range: s.range || '',
+        range_unit: s.range_unit || 'feet',
+        comp_v: s.comp_v || false,
+        comp_s: s.comp_s || false,
+        comp_m: s.comp_m || false,
+        material_desc: s.material_desc || '',
+        duration: s.duration || '',
+        classes: s.classes || '',
+        description: s.description || s.desc || '',
+        higher_levels: s.higher_levels || '',
+      });
+    }
+  }, [open, spell]);
+
+  const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+
+  const handleSave = () => {
+    const cleaned = { name: form.name };
+    if (form.type) cleaned.type = form.type;
+    if (form.casting_time) cleaned.casting_time = form.casting_time;
+    if (form.range) cleaned.range = form.range;
+    if (form.range !== '' && form.range_unit) cleaned.range_unit = form.range_unit;
+    if (form.comp_v) cleaned.comp_v = true;
+    if (form.comp_s) cleaned.comp_s = true;
+    if (form.comp_m) cleaned.comp_m = true;
+    if (form.comp_m && form.material_desc) cleaned.material_desc = form.material_desc;
+    if (form.duration) cleaned.duration = form.duration;
+    if (form.classes) cleaned.classes = form.classes;
+    if (form.description) cleaned.description = form.description;
+    if (form.higher_levels) cleaned.higher_levels = form.higher_levels;
+    onSave(cleaned);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="bg-card border-border text-foreground max-w-md mx-auto rounded-xl max-h-[85vh] overflow-y-auto p-4">
+        <DialogHeader>
+          <DialogTitle className="font-cinzel text-primary text-base flex items-center gap-2">
+            <Wand2 className="w-4 h-4" /> {t('edit_spell')}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{t('name')}</Label>
+            <Input value={form.name || ''} onChange={e => set('name', e.target.value)}
+              className="bg-muted border-border text-foreground font-inter text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{t('spell_type')}</Label>
+            <Input value={form.type || ''} onChange={e => set('type', e.target.value)}
+              placeholder={t('spell_type_placeholder')}
+              className="bg-muted border-border text-foreground font-inter text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{t('casting_time')}</Label>
+            <Input value={form.casting_time || ''} onChange={e => set('casting_time', e.target.value)}
+              placeholder={t('casting_time_placeholder')}
+              className="bg-muted border-border text-foreground font-inter text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{t('spell_range')}</Label>
+            <div className="flex gap-2">
+              <Input value={form.range || ''} onChange={e => set('range', e.target.value)}
+                placeholder={t('spell_range_placeholder')}
+                className="bg-muted border-border text-foreground font-inter text-sm flex-1" />
+              <select value={form.range_unit || 'feet'} onChange={e => set('range_unit', e.target.value)}
+                className="bg-muted border border-border text-foreground font-inter text-xs rounded-md px-2">
+                <option value="feet">{t('range_feet')}</option>
+                <option value="meters">{t('range_meters')}</option>
+                <option value="self">{t('range_self')}</option>
+                <option value="touch">{t('range_touch')}</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{t('components')}</Label>
+            <div className="flex gap-3">
+              {[['comp_v', 'V'], ['comp_s', 'S'], ['comp_m', 'M']].map(([key, lbl]) => (
+                <button key={key} onClick={() => set(key, !form[key])}
+                  className={`px-3 py-1.5 rounded-md border text-xs font-inter font-semibold transition-colors ${form[key] ? 'bg-primary/20 border-primary/40 text-primary' : 'bg-muted border-border text-muted-foreground'}`}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            {form.comp_m && (
+              <Input value={form.material_desc || ''} onChange={e => set('material_desc', e.target.value)}
+                placeholder={t('material_desc')}
+                className="bg-muted border-border text-foreground font-inter text-xs mt-1" />
+            )}
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{t('spell_duration')}</Label>
+            <Input value={form.duration || ''} onChange={e => set('duration', e.target.value)}
+              placeholder={t('spell_duration_placeholder')}
+              className="bg-muted border-border text-foreground font-inter text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{t('spell_classes')}</Label>
+            <Input value={form.classes || ''} onChange={e => set('classes', e.target.value)}
+              placeholder={t('spell_classes_placeholder')}
+              className="bg-muted border-border text-foreground font-inter text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{t('spell_text')}</Label>
+            <Textarea value={form.description || ''} onChange={e => set('description', e.target.value)}
+              rows={4} className="bg-muted border-border text-foreground font-inter text-xs resize-none" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{t('higher_levels')}</Label>
+            <Textarea value={form.higher_levels || ''} onChange={e => set('higher_levels', e.target.value)}
+              placeholder={t('higher_levels_placeholder')}
+              rows={2} className="bg-muted border-border text-foreground font-inter text-xs resize-none" />
+          </div>
+          <Button onClick={handleSave} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-inter gap-2">
+            <Save className="w-4 h-4" /> {t('save_changes')}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function SpellListEditor({ label, spells = [], onChange }) {
+  const { t } = useI18n();
   const [newSpell, setNewSpell] = useState('');
+  const [editingIdx, setEditingIdx] = useState(null);
+
+  const getName = (s) => typeof s === 'object' ? s.name : s;
+  const hasDetails = (s) => {
+    const n = normalizeSpell(s);
+    return !!(n.type || n.casting_time || n.range || n.description || n.higher_levels);
+  };
 
   const add = () => {
     if (!newSpell.trim()) return;
-    onChange([...spells, newSpell.trim()]);
+    onChange([...spells, { name: newSpell.trim() }]);
     setNewSpell('');
   };
 
   const remove = (i) => onChange(spells.filter((_, idx) => idx !== i));
+
+  const updateSpell = (i, updated) => {
+    const arr = [...spells];
+    arr[i] = updated;
+    onChange(arr);
+  };
 
   return (
     <div className="space-y-2">
@@ -65,15 +239,15 @@ function SpellListEditor({ label, spells = [], onChange }) {
       <div className="space-y-1">
         {spells.map((s, i) => (
           <div key={i} className="flex items-center gap-2">
-            <Input
-              value={s}
-              onChange={e => {
-                const arr = [...spells];
-                arr[i] = e.target.value;
-                onChange(arr);
-              }}
-              className="bg-muted border-border text-foreground font-inter text-sm"
-            />
+            <div className="flex-1 flex items-center gap-2 bg-muted border border-border rounded-md px-3 py-1.5">
+              <Wand2 className="w-3 h-3 text-primary flex-shrink-0" />
+              <span className="text-sm font-inter text-foreground flex-1 truncate">{getName(s)}</span>
+              {hasDetails(s) && <span className="text-[10px] text-primary/60">ⓘ</span>}
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setEditingIdx(i)}
+              className="text-muted-foreground hover:text-primary flex-shrink-0">
+              <Wand2 className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => remove(i)} className="text-destructive hover:text-destructive flex-shrink-0">
               <Trash2 className="w-4 h-4" />
             </Button>
@@ -85,9 +259,68 @@ function SpellListEditor({ label, spells = [], onChange }) {
           value={newSpell}
           onChange={e => setNewSpell(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && add()}
-          placeholder={`Añadir ${label.toLowerCase()}...`}
+          placeholder={`${t('add_spell_desc').split('...')[0]}...`}
           className="bg-muted border-border text-foreground font-inter text-sm"
         />
+        <Button variant="outline" size="icon" onClick={add} className="border-primary/40 text-primary flex-shrink-0">
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+      {editingIdx !== null && (
+        <SpellEditorDialog
+          spell={spells[editingIdx]}
+          open={true}
+          onClose={() => setEditingIdx(null)}
+          onSave={(updated) => updateSpell(editingIdx, updated)}
+        />
+      )}
+    </div>
+  );
+}
+
+function FeatureListEditor({ features = [], onChange }) {
+  const { t } = useI18n();
+  const [newTitle, setNewTitle] = useState('');
+  const [editingIdx, setEditingIdx] = useState(null);
+
+  const add = () => {
+    if (!newTitle.trim()) return;
+    onChange([...features, { title: newTitle.trim(), description: '' }]);
+    setNewTitle('');
+  };
+
+  const remove = (i) => onChange(features.filter((_, idx) => idx !== i));
+
+  const update = (i, field, value) => {
+    const arr = [...features];
+    arr[i] = { ...arr[i], [field]: value };
+    onChange(arr);
+  };
+
+  return (
+    <div className="space-y-3">
+      <Label className="text-xs font-inter text-muted-foreground uppercase tracking-wider">{t('class_features')}</Label>
+      {features.map((f, i) => (
+        <div key={i} className="bg-muted/50 rounded-lg border border-border p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+            <Input value={f.title || ''} onChange={e => update(i, 'title', e.target.value)}
+              placeholder={t('feature_title')}
+              className="bg-muted border-border text-foreground font-inter text-sm flex-1" />
+            <Button variant="ghost" size="icon" onClick={() => remove(i)} className="text-destructive hover:text-destructive flex-shrink-0">
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+          <Textarea value={f.description || ''} onChange={e => update(i, 'description', e.target.value)}
+            placeholder={t('feature_description')}
+            className="bg-muted border-border text-foreground font-inter text-sm" rows={2} />
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <Input value={newTitle} onChange={e => setNewTitle(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && add()}
+          placeholder={t('add_feature')}
+          className="bg-muted border-border text-foreground font-inter text-sm" />
         <Button variant="outline" size="icon" onClick={add} className="border-primary/40 text-primary flex-shrink-0">
           <Plus className="w-4 h-4" />
         </Button>
@@ -165,6 +398,7 @@ export default function EditModal({ open, onClose, character, onSave, isSaving }
               { value: 'skills', label: t('tab_skills') },
               { value: 'spells', label: t('tab_spells') },
               { value: 'traits', label: t('tab_traits') },
+              { value: 'features', label: t('tab_features') },
               { value: 'monedas', label: t('tab_coins') },
             ].map(tab => (
               <TabsTrigger key={tab.value} value={tab.value}
@@ -270,6 +504,10 @@ export default function EditModal({ open, onClose, character, onSave, isSaving }
             <TextareaField label={t('bonds')} value={form.bonds} onChange={v => set('bonds', v)} />
             <TextareaField label={t('flaws')} value={form.flaws} onChange={v => set('flaws', v)} />
             <TextareaField label={t('equipment')} value={form.equipment} onChange={v => set('equipment', v)} rows={4} />
+          </TabsContent>
+
+          <TabsContent value="features" className="space-y-3 mt-4">
+            <FeatureListEditor features={form.features || []} onChange={v => set('features', v)} />
           </TabsContent>
 
           <TabsContent value="monedas" className="space-y-3 mt-4">

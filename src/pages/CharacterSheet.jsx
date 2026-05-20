@@ -3,7 +3,7 @@ import { listCharacters, getCharacter as fetchCharacter, updateCharacter, getCac
 import { useI18n } from '@/lib/i18n';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Sword, BookOpen, ScrollText, User, Pencil, RefreshCw, Settings } from 'lucide-react';
+import { Sword, BookOpen, ScrollText, User, Pencil, RefreshCw, Settings, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 import CharacterHeader from '@/components/character/CharacterHeader';
@@ -11,6 +11,7 @@ import AbilityScore from '@/components/character/AbilityScore';
 import SkillsList from '@/components/character/SkillsList';
 import CombatStats from '@/components/character/CombatStats';
 import TraitsPanel from '@/components/character/TraitsPanel';
+import FeaturesPanel from '@/components/character/FeaturesPanel';
 import SpellsPanel from '@/components/character/SpellsPanel';
 import CurrencyPanel from '@/components/character/CurrencyPanel';
 import InventoryPanel from '@/components/character/InventoryPanel';
@@ -258,6 +259,9 @@ export default function CharacterSheet({ onOpenSettings }) {
             <TabsTrigger value="traits" className="flex-1 gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <ScrollText className="w-4 h-4" /><span className="hidden sm:inline">{t('tab_traits')}</span>
             </TabsTrigger>
+            <TabsTrigger value="features" className="flex-1 gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <Sparkles className="w-4 h-4" /><span className="hidden sm:inline">{t('tab_features')}</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="combat" className="mt-4">
@@ -274,6 +278,9 @@ export default function CharacterSheet({ onOpenSettings }) {
           </TabsContent>
           <TabsContent value="traits" className="mt-4">
             <TraitsPanel character={character} />
+          </TabsContent>
+          <TabsContent value="features" className="mt-4">
+            <FeaturesPanel features={character.features || []} />
           </TabsContent>
         </Tabs>
       </div>

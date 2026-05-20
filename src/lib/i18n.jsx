@@ -60,6 +60,7 @@ const translations = {
     tab_skills: 'Habilidades',
     tab_spells: 'Conjuros',
     tab_traits: 'Rasgos',
+    tab_features: 'Rasgos de Clase',
 
     // Combat
     armor_class: 'Clase de Armadura',
@@ -77,6 +78,14 @@ const translations = {
     flaws: 'Defectos',
     other_proficiencies: 'Otras Competencias e Idiomas',
     equipment: 'Equipo',
+
+    // Class Features
+    class_features: 'Rasgos de Clase',
+    add_feature: 'Añadir rasgo...',
+    feature_title: 'Título',
+    feature_description: 'Descripción',
+    edit_feature: 'Editar Rasgo',
+    no_features: 'Sin rasgos de clase',
 
     // Spells
     spellcasting_ability: 'Aptitud Mágica',
@@ -172,6 +181,38 @@ const translations = {
 
     // Language
     language: 'Idioma',
+
+    // Spell details
+    spell_description: 'Descripción',
+    no_description: 'Sin descripción. Pulsa editar para añadir una.',
+    feet_unit: 'pies',
+    meters_unit: 'metros',
+    show_meters: 'Mostrar en metros',
+    add_spell_desc: 'Añadir descripción...',
+    spell_type: 'Tipo',
+    spell_type_placeholder: 'Truco Evocación, Nivel 1 Nigromancia...',
+    casting_time: 'Tiempo de Lanzamiento',
+    casting_time_placeholder: 'Acción, Acción bonus, Reacción...',
+    spell_range: 'Alcance',
+    spell_range_placeholder: '120',
+    range_feet: 'pies',
+    range_meters: 'metros',
+    range_self: 'Personal',
+    range_touch: 'Toque',
+    components: 'Componentes',
+    verbal: 'Verbal',
+    somatic: 'Somático',
+    material: 'Material',
+    material_desc: 'Descripción del material',
+    spell_duration: 'Duración',
+    spell_duration_placeholder: 'Instantáneo, 1 minuto, Concentración...',
+    spell_classes: 'Clases',
+    spell_classes_placeholder: 'Brujo, Mago...',
+    spell_text: 'Descripción del conjuro',
+    higher_levels: 'En Niveles Superiores',
+    higher_levels_placeholder: 'Efecto a niveles más altos...',
+    edit_spell: 'Editar Conjuro',
+    spell_info: 'Información',
   },
   en: {
     ability_strength: 'Strength',
@@ -224,6 +265,7 @@ const translations = {
     tab_skills: 'Skills',
     tab_spells: 'Spells',
     tab_traits: 'Traits',
+    tab_features: 'Features',
 
     armor_class: 'Armor Class',
     initiative: 'Initiative',
@@ -239,6 +281,13 @@ const translations = {
     flaws: 'Flaws',
     other_proficiencies: 'Other Proficiencies & Languages',
     equipment: 'Equipment',
+
+    class_features: 'Class Features',
+    add_feature: 'Add feature...',
+    feature_title: 'Title',
+    feature_description: 'Description',
+    edit_feature: 'Edit Feature',
+    no_features: 'No class features',
 
     spellcasting_ability: 'Spellcasting Ability',
     spell_save_dc: 'Spell Save DC',
@@ -326,6 +375,38 @@ const translations = {
     connection_error: 'Connection error: ',
 
     language: 'Language',
+
+    // Spell details
+    spell_description: 'Description',
+    no_description: 'No description. Tap edit to add one.',
+    feet_unit: 'feet',
+    meters_unit: 'meters',
+    show_meters: 'Show in meters',
+    add_spell_desc: 'Add description...',
+    spell_type: 'Type',
+    spell_type_placeholder: 'Cantrip Evocation, 1st-level Necromancy...',
+    casting_time: 'Casting Time',
+    casting_time_placeholder: 'Action, Bonus action, Reaction...',
+    spell_range: 'Range',
+    spell_range_placeholder: '120',
+    range_feet: 'feet',
+    range_meters: 'meters',
+    range_self: 'Self',
+    range_touch: 'Touch',
+    components: 'Components',
+    verbal: 'Verbal',
+    somatic: 'Somatic',
+    material: 'Material',
+    material_desc: 'Material description',
+    spell_duration: 'Duration',
+    spell_duration_placeholder: 'Instantaneous, 1 minute, Concentration...',
+    spell_classes: 'Classes',
+    spell_classes_placeholder: 'Warlock, Wizard...',
+    spell_text: 'Spell description',
+    higher_levels: 'At Higher Levels',
+    higher_levels_placeholder: 'Effect at higher levels...',
+    edit_spell: 'Edit Spell',
+    spell_info: 'Information',
   },
 };
 

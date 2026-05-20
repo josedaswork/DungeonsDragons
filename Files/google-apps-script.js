@@ -55,6 +55,30 @@ function doGet(e) {
   }
 }
 
+// POST handler — used for update to avoid URL length limits
+function doPost(e) {
+  try {
+    var action = e.parameter.action;
+    var id = e.parameter.id;
+    var body = e.postData ? e.postData.contents : '{}';
+    var parsed = {};
+    try { parsed = JSON.parse(body); } catch(ex) {}
+    var jsonData = parsed.data || '{}';
+
+    if (action === 'update') {
+      var result = updateCharacter(id, jsonData);
+      return ContentService.createTextOutput(JSON.stringify(result))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ error: 'POST solo soporta update' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // ===================== ÍNDICE =====================
 
 function getIndexSheet() {
@@ -276,6 +300,7 @@ function readCharacterFromSheet(sheetName) {
   var cantrips = [], spells1 = [], spells2 = [], spells3 = [];
   var traits = '', personality = '', ideals = '', bonds = '', flaws = '', equipment = '';
   var inventory = [];
+  var features = [];
 
   for (var r = LISTS_START; r <= lastRow; r++) {
     var cellA = String(sheet.getRange(r, 1).getValue()).trim();
@@ -287,13 +312,15 @@ function readCharacterFromSheet(sheetName) {
     }
 
     if (currentSection.indexOf('TRUCOS') >= 0 && cellA) {
-      cantrips.push(cellA);
+      cantrips.push(cellB ? parseSpellCell(cellA, cellB) : cellA);
     } else if (currentSection.indexOf('CONJUROS NIVEL 1') >= 0 && cellA) {
-      spells1.push(cellA);
+      spells1.push(cellB ? parseSpellCell(cellA, cellB) : cellA);
     } else if (currentSection.indexOf('CONJUROS NIVEL 2') >= 0 && cellA) {
-      spells2.push(cellA);
+      spells2.push(cellB ? parseSpellCell(cellA, cellB) : cellA);
     } else if (currentSection.indexOf('CONJUROS NIVEL 3') >= 0 && cellA) {
-      spells3.push(cellA);
+      spells3.push(cellB ? parseSpellCell(cellA, cellB) : cellA);
+    } else if (currentSection.indexOf('RASGOS DE CLASE') >= 0 && cellA) {
+      features.push({ title: cellA, description: cellB || '' });
     } else if (currentSection.indexOf('RASGOS') >= 0) {
       if (cellA === 'Rasgos y Atributos') traits = cellB;
       else if (cellA === 'Personalidad') personality = cellB;
@@ -317,6 +344,7 @@ function readCharacterFromSheet(sheetName) {
   char.flaws = flaws;
   char.equipment = equipment;
   char.inventory = inventory;
+  char.features = features;
 
   return char;
 }
@@ -358,6 +386,41 @@ function setNestedValue(obj, path, val) {
   }
 }
 
+// ===================== SPELL HELPERS =====================
+
+/** Read a spell from sheet: col A = name, col B = JSON data or legacy plain text */
+function parseSpellCell(cellA, cellB) {
+  // Try JSON first (structured spell)
+  try {
+    var obj = JSON.parse(cellB);
+    if (typeof obj === 'object' && obj !== null) {
+      obj.name = cellA; // always use col A as authoritative name
+      return obj;
+    }
+  } catch(e) { /* not JSON, treat as legacy plain desc */ }
+  // Legacy: plain description text in column B
+  return { name: cellA, description: cellB };
+}
+
+/** Write a spell to sheet row: col A = name, col B = JSON (or empty) */
+function writeSpellRow(sheet, row, spell) {
+  if (typeof spell === 'string') {
+    sheet.getRange(row, 1).setValue(spell);
+    return;
+  }
+  sheet.getRange(row, 1).setValue(spell.name || '');
+  // Build a clean copy without 'name' for column B
+  var data = {};
+  var keys = ['type','casting_time','range','range_unit','comp_v','comp_s','comp_m',
+              'material_desc','duration','classes','description','higher_levels','desc'];
+  for (var i = 0; i < keys.length; i++) {
+    if (spell[keys[i]]) data[keys[i]] = spell[keys[i]];
+  }
+  if (Object.keys(data).length > 0) {
+    sheet.getRange(row, 2).setValue(JSON.stringify(data));
+  }
+}
+
 // ===================== ESCRIBIR OBJETO → HOJA =====================
 
 function writeCharacterToSheet(sheetName, char) {
@@ -392,7 +455,7 @@ function writeCharacterToSheet(sheetName, char) {
   sheet.getRange(row, 1).setValue('═══ TRUCOS ═══').setFontWeight('bold');
   row++;
   (char.cantrips || []).forEach(function(s) {
-    sheet.getRange(row, 1).setValue(s);
+    writeSpellRow(sheet, row, s);
     row++;
   });
   row++;
@@ -401,7 +464,7 @@ function writeCharacterToSheet(sheetName, char) {
   sheet.getRange(row, 1).setValue('═══ CONJUROS NIVEL 1 ═══').setFontWeight('bold');
   row++;
   (char.spells_level_1 || []).forEach(function(s) {
-    sheet.getRange(row, 1).setValue(s);
+    writeSpellRow(sheet, row, s);
     row++;
   });
   row++;
@@ -410,7 +473,7 @@ function writeCharacterToSheet(sheetName, char) {
   sheet.getRange(row, 1).setValue('═══ CONJUROS NIVEL 2 ═══').setFontWeight('bold');
   row++;
   (char.spells_level_2 || []).forEach(function(s) {
-    sheet.getRange(row, 1).setValue(s);
+    writeSpellRow(sheet, row, s);
     row++;
   });
   row++;
@@ -419,7 +482,7 @@ function writeCharacterToSheet(sheetName, char) {
   sheet.getRange(row, 1).setValue('═══ CONJUROS NIVEL 3 ═══').setFontWeight('bold');
   row++;
   (char.spells_level_3 || []).forEach(function(s) {
-    sheet.getRange(row, 1).setValue(s);
+    writeSpellRow(sheet, row, s);
     row++;
   });
   row++;
@@ -438,6 +501,16 @@ function writeCharacterToSheet(sheetName, char) {
   rasgoFields.forEach(function(rf) {
     sheet.getRange(row, 1).setValue(rf.label);
     sheet.getRange(row, 2).setValue(char[rf.key] || '');
+    row++;
+  });
+  row++;
+
+  // Rasgos de Clase (Features)
+  sheet.getRange(row, 1).setValue('═══ RASGOS DE CLASE ═══').setFontWeight('bold');
+  row++;
+  (char.features || []).forEach(function(f) {
+    sheet.getRange(row, 1).setValue(f.title || '');
+    sheet.getRange(row, 2).setValue(f.description || '');
     row++;
   });
   row++;

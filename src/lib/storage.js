@@ -47,13 +47,24 @@ function setCachedCharacter(id, char) {
 }
 
 // --- API calls ---
-async function callApi(params) {
+async function callApi(params, postBody) {
   const url = getScriptUrl()
   if (!url) throw new Error('URL del script no configurada')
 
-  const response = await fetch(url + '?' + new URLSearchParams(params), {
-    redirect: 'follow',
-  })
+  const options = { redirect: 'follow' }
+
+  if (postBody !== undefined) {
+    // Use POST to avoid URL length limits on large payloads
+    options.method = 'POST'
+    options.body = JSON.stringify({ ...params, data: postBody })
+    options.headers = { 'Content-Type': 'text/plain' }
+  }
+
+  const queryUrl = postBody !== undefined
+    ? url + '?' + new URLSearchParams({ action: params.action, id: params.id })
+    : url + '?' + new URLSearchParams(params)
+
+  const response = await fetch(queryUrl, options)
 
   const text = await response.text()
   let data
@@ -91,11 +102,10 @@ export async function createCharacter(name) {
 }
 
 export async function updateCharacter(id, updates) {
-  const data = await callApi({
-    action: 'update',
-    id,
-    data: JSON.stringify(updates),
-  })
+  const data = await callApi(
+    { action: 'update', id },
+    JSON.stringify(updates),
+  )
   return data.character
 }
 
